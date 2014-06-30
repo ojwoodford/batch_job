@@ -180,30 +180,6 @@ n = whos('A');
 n = n.bytes;
 end
 
-function nm = tmpname()
-[nm, nm] = fileparts(tempname());
-end
-
-function m = open_mmap(mmap)
-m = memmapfile(mmap.name, 'Format', mmap.format, 'Writable', mmap.writable, 'Repeat', 1);
-end
-
-function func = construct_function(s)
-% Get the global data
-if isfield(s, 'global_data')
-    try
-        % Try to load from a function
-        global_data = feval(s.global_data);
-    catch
-        global_data = s.global_data;
-    end
-    % Get the function handle
-    func = @(A) feval(s.func, reshape(A, s.insize), global_data);
-else
-    func = @(A) feval(s.func, reshape(A, s.insize));
-end
-end
-
 function loop(func, mi, mo, n, worker)
 % Initialize values
 N = size(mi.Data.input, 2);
@@ -261,17 +237,3 @@ catch
 end
 end
 
-% Time string function
-function str = timestr(t)
-s = rem(t, 60);
-m = rem(floor(t/60), 60);
-h = floor(t/3600);
-
-if h > 0
-    str= sprintf('%dh%02dm%02.0fs', h, m, s);
-elseif m > 0
-    str = sprintf('%dm%02.0fs', m, s);
-else
-    str = sprintf('%2.1fs', s);
-end
-end

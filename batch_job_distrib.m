@@ -1,6 +1,6 @@
 %BATCH_JOB_DISTRIB Distribute a MATLAB for loop across several PCs
 %
-%   output = batch_job(func, input, [workers, [global_data]])
+%   output = batch_job_distrib(func, input, [workers, [global_data]], ...)
 %
 % If you have a for loop which can be written as:
 %
@@ -94,28 +94,6 @@ function output = batch_job_distrib(varargin)
 
 isposint = @(A) isscalar(A) && isnumeric(A) && round(A) == A && A > 0;
 
-% Determine if we are a worker
-if nargin == 2 && ischar(varargin{1}) && isposint(varargin{2})
-    % We are a worker
-    % Load the parameters
-    s = load(varargin{1});
-    % CD to the correct directory
-    cd(s.cwd);
-    % Construct the function
-    func = construct_function(s);
-    % Check if we're the principal worker
-    if varargin{2} == 0
-        % Principal worker - tidy up at the end
-        principal_worker(func, s);
-    else
-        % Normal worker - just loop through chunks
-        loop(func, open_mmap(s.input_mmap), s, varargin{2});
-    end
-    % Quit
-    return;
-end
-
-% We are the server
 % Check for flags
 async = false;
 progress = false;
@@ -200,7 +178,7 @@ ht = timer('StartDelay', s.chunk_time, 'TimerFcn', @start_workers_t, 'Tag', s.wo
 % it takes
 start(ht); % Start the timer to start workers if one function evaluation takes too long
 tic;
-output = func(input(:,1));
+output{1} = func(input(:,1));
 t = toc;
 stop(ht); % Stop the timer to start workers if one function evaluation takes too long
 
@@ -209,35 +187,23 @@ wnys = get(ht, 'TasksExecuted') == 0;
 % Delete the timer
 delete(ht);
 
-% Check the output type
-assert(isnumeric(output) || iscell(output), 'function output must be a numeric type or cell array');
-
-% Compute the output size and class
-outsize = [size(output) s.N];
-if outsize(2) == 1
-    outsize = outsize([1 3]);
-end
-outclass = class(output);
-output = output(:);
-
 % If the timing is very short, do more evaluations to get a better estimate
 % of time per evaluation
 if wnys && t < 0.05
     s.chunk_size = min(floor(0.1 / t) + 1, s.N);
-    output(:,s.chunk_size) = output;
     tic;
-    for a = 2:s.chunk_size
-        output(:,a) = reshape(func(input(:,a)), [], 1);
+    for a = s.chunk_size:-1:2
+        output{a} = func(input(:,a));
     end
     t = toc / (s.chunk_size - 1);
 end
 
 if s.chunk_size == s.N
     % Done already!
-    output = reshape(output, outsize);
+    output = matrify(output);
     if keep
         mkdir(s.work_dir);
-        save(output_chunk_filename(s.work_dir, 1), 'output', '-v7');
+        save(chunk_name(s.work_dir, 1), 'output', '-v7');
     end 
     if async
         output = @() output;
@@ -252,15 +218,14 @@ if wnys
     if s.chunk_size * 2 >= s.N && ~async
         % No point starting workers
         % Just finish up now
-        b = size(output, 2);
-        output(:,s.N) = output(:,1);
-        for a = b+1:s.N
-            output(:,a) = reshape(func(input(:,a)), [], 1);
+        b = numel(output);
+        for a = s.N:-1:b+1
+            output{a} = func(input(:,a));
         end
-        output = reshape(output, outsize);
+        output = matrify(output);
         if keep
             mkdir(s.work_dir);
-            save(output_chunk_filename(s.work_dir, 1), 'output', '-v7');
+            save(chunk_name(s.work_dir, 1), 'output', '-v7');
         end
         return;
     end
@@ -270,7 +235,7 @@ if wnys
 else
     % Workers alread started - save the first chunk
     % Get the chunk filename
-    fname = output_chunk_filename(s.work_dir, 1);
+    fname = chunk_name(s.work_dir, 1);
     % Check if the lock or result file exists
     if ~exist(fname, 'file')
         % Try to grab the lock for this chunk
@@ -286,10 +251,10 @@ clear output
 
 if async
     % Return a handle to the function for getting the output
-    output = @() compute_output(s, outclass, outsize, func, hb, co);
+    output = @() compute_output(s, func, hb, co);
 else
     % Return the output
-    output = compute_output(s, outclass, outsize, func, hb, co);
+    output = compute_output(s, func, hb, co);
 end
 end
 
@@ -309,13 +274,13 @@ end
 write_bin(input, s.input_mmap.name);
 
 % Save the command script
-cmd = @(str, i1) sprintf('matlab %s -r "try, batch_job_distrib(''%s'', %s ); catch, end; quit force;"', str, s.params_file, i1);
+cmd = @(str) sprintf('matlab %s -r "try, batch_job_worker(''%s''); catch, end; quit force;"', str, s.params_file);
 % Open the file
 fh = fopen(s.cmd_file, 'w');
 % Linux bash script
-fprintf(fh, ':; nohup %s\rn:; exit\r\n', cmd('-nodisplay -nosplash', '$1'));
+fprintf(fh, ':; nohup %s\rn:; exit\r\n', cmd('-nodisplay -nosplash'));
 % Windows batch file
-fprintf(fh, '@start %s\n', cmd('-automation', '%1'));
+fprintf(fh, '@start %s\n', cmd('-automation'));
 fclose(fh);
 
 % Save the params
@@ -387,7 +352,7 @@ for w = 1:size(workers, 1)
 end
 end
 
-function output = compute_output(s, outclass, outsize, func, hb, co)
+function output = compute_output(s, func, hb, co)
 % co required to ensure cleanup doesn't happen before finished in
 % asynchronous case.
 
@@ -402,28 +367,34 @@ try
 catch
 end
 
-% Create the output array
-outsize(end) = s.N;
-if strcmp(outclass, 'cell')
-    output = cell([prod(outsize(1:end-1)), outsize(end)]);
-else
-    output = repmat(cast(NaN, outclass), [prod(outsize(1:end-1)) outsize(end)]);
-end
-
 % Read in all the outputs
+output = cell(s.N, 1);
 for a = 1:ceil(s.N / s.chunk_size)
     % Get the chunk filename
-    fname = output_chunk_filename(s.work_dir, a);
+    fname = chunk_name(s.work_dir, a);
     % Check that the file exists
     if exist(fname, 'file')
         % Set the chunk indices
         ind = get_chunk_indices(a, s);
         % Read in the data
-        output(:,ind) = getfield(load(fname), 'output');
+        output(ind) = getfield(load(fname), 'output');
     end
 end
 % Reshape the output
-output = reshape(output, outsize);
+output = matrify(output);
+end
+
+% Convert the output to a matrix or array
+function output = matrify(output)
+if ~iscell(output{1}) && ~isnumeric(output{1})
+    return;
+end
+sz = size(output{1});
+if ~all(cellfun(@(c) isequal(size(c), sz), output, 'UniformOutput', true))
+    return;
+end
+sz = [sz 1];
+output = cat(find(sz == 1, 1, 'last'), output{:});
 end
 
 function principal_worker(func, s)
@@ -442,7 +413,7 @@ for b = 1:1e3
     end
     for a = find(chunks_unfinished)'
         % Get the chunk filename
-        fname = output_chunk_filename(s.work_dir, a);
+        fname = chunk_name(s.work_dir, a);
         % Check that the file exists and the lock doesn't
         switch (exist(fname, 'file') ~= 0) * 2 + (exist([fname '.lock'], 'file') ~= 0)
             case 0
@@ -491,30 +462,6 @@ fwrite(fh, A, class(A));
 fclose(fh);
 end
 
-function nm = tmpname()
-[nm, nm] = fileparts(tempname());
-end
-
-function m = open_mmap(mmap)
-m = memmapfile(mmap.name, 'Format', mmap.format, 'Writable', mmap.writable, 'Repeat', 1);
-end
-
-function func = construct_function(s)
-% Get the global data
-if isfield(s, 'global_data')
-    try
-        % Try to load from a function
-        global_data = feval(s.global_data);
-    catch
-        global_data = s.global_data;
-    end
-    % Get the function handle
-    func = @(A) feval(s.func, reshape(A, s.insize), global_data);
-else
-    func = @(A) feval(s.func, reshape(A, s.insize));
-end
-end
-
 function loop(func, mi, s, shift)
 % Start a timer to check for the kill signal
 if shift ~= 0
@@ -539,7 +486,7 @@ function br = do_chunk(func, mi, s, a)
 br = false;
 try
     % Get the chunk filename
-    fname = output_chunk_filename(s.work_dir, a);
+    fname = chunk_name(s.work_dir, a);
     % Check if the result file exists
     if exist(fname, 'file')
         return;
@@ -553,7 +500,7 @@ try
     ind = get_chunk_indices(a, s);
     % Compute the results
     for b = numel(ind):-1:1
-        output(:,b) = reshape(func(mi.Data.input(:,ind(b))), [], 1);
+        output{b} = func(mi.Data.input(:,ind(b)));
     end
     % Write out the data
     save(fname, 'output', '-v7');
@@ -563,14 +510,6 @@ catch me
     % Quit
     br = true;
 end
-end
-
-function fname = output_chunk_filename(work_dir, ind)
-fname = sprintf('%schunk%6.6d.mat', work_dir, ind);
-end
-
-function ind = get_chunk_indices(a, s)
-ind = (a-1)*s.chunk_size+1:min(a*s.chunk_size, s.N);
 end
 
 function quiet_delete(varargin)
@@ -620,11 +559,6 @@ if kill_signal(get(ht, 'UserData'))
 end
 end
 
-function tf = kill_signal(s)
-% Signalled if the params file is deleted
-tf = exist(s.params_file, 'file') == 0;
-end
-
 function progress_func(ht, varargin)
 % Get the progress bar info
 info = get(ht, 'UserData');
@@ -658,17 +592,3 @@ catch me
 end
 end
 
-% Time string function
-function str = timestr(t)
-s = rem(t, 60);
-m = rem(floor(t/60), 60);
-h = floor(t/3600);
-
-if h > 0
-    str= sprintf('%dh%02dm%02.0fs', h, m, s);
-elseif m > 0
-    str = sprintf('%dm%02.0fs', m, s);
-else
-    str = sprintf('%2.1fs', s);
-end
-end
