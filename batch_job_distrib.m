@@ -237,7 +237,7 @@ if s.chunk_size == s.N
     output = reshape(output, outsize);
     if keep
         mkdir(s.work_dir);
-        save([output_chunk_filename(s.work_dir, 1) 'mat'], 'output', '-v7');
+        save(output_chunk_filename(s.work_dir, 1), 'output', '-v7');
     end 
     if async
         output = @() output;
@@ -260,7 +260,7 @@ if wnys
         output = reshape(output, outsize);
         if keep
             mkdir(s.work_dir);
-            save([output_chunk_filename(s.work_dir, 1) 'mat'], 'output', '-v7');
+            save(output_chunk_filename(s.work_dir, 1), 'output', '-v7');
         end
         return;
     end
@@ -272,12 +272,12 @@ else
     % Get the chunk filename
     fname = output_chunk_filename(s.work_dir, 1);
     % Check if the lock or result file exists
-    if ~exist([fname 'lock'], 'file') && ~exist([fname 'mat'], 'file')
+    if ~exist(fname, 'file')
         % Try to grab the lock for this chunk
-        lock = get_lock(fname);
+        lock = get_file_lock(fname);
         if ~isempty(lock)
             % Write out the data
-            save([fname 'mat'], 'output', '-v7');
+            save(fname, 'output', '-v7');
         end
         clear lock
     end
@@ -413,7 +413,7 @@ end
 % Read in all the outputs
 for a = 1:ceil(s.N / s.chunk_size)
     % Get the chunk filename
-    fname = [output_chunk_filename(s.work_dir, a) 'mat'];
+    fname = output_chunk_filename(s.work_dir, a);
     % Check that the file exists
     if exist(fname, 'file')
         % Set the chunk indices
@@ -444,7 +444,7 @@ for b = 1:1e3
         % Get the chunk filename
         fname = output_chunk_filename(s.work_dir, a);
         % Check that the file exists and the lock doesn't
-        switch (exist([fname 'mat'], 'file') ~= 0) * 2 + (exist([fname 'lock'], 'file') ~= 0)
+        switch (exist(fname, 'file') ~= 0) * 2 + (exist([fname '.lock'], 'file') ~= 0)
             case 0
                 % Neither exist (something went wrong!)
                 do_chunk(func, mi, s, a); % Do the chunk now if we can
@@ -455,7 +455,7 @@ for b = 1:1e3
                 end
             case 1
                 % Lock file exists - see if we can grab it
-                lock = get_lock(fname);
+                lock = get_file_lock(fname, true);
                 % Now delete it
                 clear lock
             case 2
@@ -540,12 +540,12 @@ br = false;
 try
     % Get the chunk filename
     fname = output_chunk_filename(s.work_dir, a);
-    % Check if the lock or result file exists
-    if exist([fname 'lock'], 'file') || exist([fname 'mat'], 'file')
+    % Check if the result file exists
+    if exist(fname, 'file')
         return;
     end
     % Try to grab the lock for this chunk
-    lock = get_lock(fname);
+    lock = get_file_lock(fname);
     if isempty(lock)
         return;
     end
@@ -556,7 +556,7 @@ try
         output(:,b) = reshape(func(mi.Data.input(:,ind(b))), [], 1);
     end
     % Write out the data
-    save([fname 'mat'], 'output', '-v7');
+    save(fname, 'output', '-v7');
 catch me
     % Report the error
     fprintf('%s\n', getReport(me, 'basic'));
@@ -565,29 +565,8 @@ catch me
 end
 end
 
-function lock = get_lock(fname)
-% Attempt to grab the lock
-fname = [fname 'lock'];
-jh = javaObject('java.io.RandomAccessFile', fname, 'rw');
-lock = jh.getChannel().tryLock();
-if isempty(lock)
-    % Failed - a computation is in progress elsewhere
-    jh.close();
-else
-    % Succeeded - make sure the lock is deleted when finished with
-    lock = onCleanup(@() cleanup_lock(lock, jh, fname));
-end
-end
-
-function cleanup_lock(lock, jh, fname)
-% Free and delete the lock file
-lock.release();
-jh.close();
-delete(fname);
-end
-
 function fname = output_chunk_filename(work_dir, ind)
-fname = sprintf('%schunk%6.6d.', work_dir, ind);
+fname = sprintf('%schunk%6.6d.mat', work_dir, ind);
 end
 
 function ind = get_chunk_indices(a, s)
