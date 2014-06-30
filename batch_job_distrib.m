@@ -92,8 +92,6 @@
 
 function output = batch_job_distrib(varargin)
 
-isposint = @(A) isscalar(A) && isnumeric(A) && round(A) == A && A > 0;
-
 % Check for flags
 async = false;
 progress = false;
@@ -117,6 +115,7 @@ for a = 1:nargin
 end
 varargin = varargin(M);
 progress = progress & usejava('awt');
+
 % Get the arguments
 s.func = varargin{1};
 input = varargin{2};
@@ -128,18 +127,22 @@ if N > 2 && ~isempty(varargin{3})
 else
     workers = {'', feature('numCores')};
 end
+
 % Check the worker array makes sense
+isposint = @(A) isscalar(A) && isnumeric(A) && round(A) == A && A > 0;
 for w = 1:size(workers, 1)
     assert(ischar(workers{w,1}) && isposint(workers{w,2}));
 end
 if N > 3
     s.global_data = varargin{4};
 end
+
 % Get size and reshape data
 s.insize = size(input);
 s.N = s.insize(end);
 s.insize(end) = 1;
 input = reshape(input, prod(s.insize), s.N);
+
 % Construct the function
 func = construct_function(s);
 
@@ -356,10 +359,64 @@ function output = compute_output(s, func, hb, co)
 % co required to ensure cleanup doesn't happen before finished in
 % asynchronous case.
 
-if exist(s.params_file, 'file')
-    % Finish the work and tidy up
-    principal_worker(func, s);
+try
+    % Open the memory mapped file
+    mi = open_mmap(s.input_mmap);
+    
+    % Go over all possible chunks in order, starting at the input index
+    for a = 1:ceil(s.N / s.chunk_size)
+        % Do the chunk
+        do_chunk(func, mi, s, a);
+    end
+    
+    % Wait for all the chunks to finish
+    chunks_unfinished = true(ceil(s.N / s.chunk_size), 1);
+    for b = 1:1e3
+        % Check for the kill signal (user deleted!)
+        if kill_signal(s)
+            break;
+        end
+        for a = find(chunks_unfinished)'
+            % Get the chunk filename
+            fname = chunk_name(s.work_dir, a);
+            % Check that the file exists and the lock doesn't
+            switch (exist(fname, 'file') ~= 0) * 2 + (exist([fname '.lock'], 'file') ~= 0)
+                case 0
+                    % Neither exist (something went wrong!)
+                    do_chunk(func, mi, s, a); % Do the chunk now if we can
+                    chunks_unfinished(a) = false; % Mark as done regardless
+                    % Check for the kill signal
+                    if kill_signal(s)
+                        break;
+                    end
+                case 1
+                    % Lock file exists - see if we can grab it
+                    lock = get_file_lock(fname, true);
+                    % Now delete it
+                    clear lock
+                case 2
+                    % The mat file exists and the lock doesn't - great
+                    chunks_unfinished(a) = false; % Mark as read
+                otherwise
+                    % Computation in progress. Go on to the next chunk
+                    continue;
+            end
+        end
+        % Wait a bit - just to let all the locks be freed
+        pause(0.05);
+        % Check if we're done
+        if ~any(chunks_unfinished)
+            break;
+        end
+    end
+catch me
+    fprintf('%s\n', getReport(me));
 end
+
+% Tidy up files
+clear mi lock
+d = dir([s.work_dir '*.lock']);
+quiet_delete(s.params_file, s.cmd_file, s.input_mmap.name, d(:).name);
 
 % Close the waitbar
 try
@@ -384,142 +441,6 @@ end
 output = matrify(output);
 end
 
-% Convert the output to a matrix or array
-function output = matrify(output)
-if ~iscell(output{1}) && ~isnumeric(output{1})
-    return;
-end
-sz = size(output{1});
-if ~all(cellfun(@(c) isequal(size(c), sz), output, 'UniformOutput', true))
-    return;
-end
-sz = [sz 1];
-output = cat(find(sz == 1, 1, 'last'), output{:});
-end
-
-function principal_worker(func, s)
-% Open the memory mapped file
-mi = open_mmap(s.input_mmap);
-
-% Start the local worker
-loop(func, mi, s, 0);
-
-% Wait for all the chunks to finish
-chunks_unfinished = true(ceil(s.N / s.chunk_size), 1);
-for b = 1:1e3
-    % Check for the kill signal
-    if kill_signal(s)
-        break;
-    end
-    for a = find(chunks_unfinished)'
-        % Get the chunk filename
-        fname = chunk_name(s.work_dir, a);
-        % Check that the file exists and the lock doesn't
-        switch (exist(fname, 'file') ~= 0) * 2 + (exist([fname '.lock'], 'file') ~= 0)
-            case 0
-                % Neither exist (something went wrong!)
-                do_chunk(func, mi, s, a); % Do the chunk now if we can
-                chunks_unfinished(a) = false; % Mark as done regardless
-                % Check for the kill signal
-                if kill_signal(s)
-                    break;
-                end
-            case 1
-                % Lock file exists - see if we can grab it
-                lock = get_file_lock(fname, true);
-                % Now delete it
-                clear lock
-            case 2
-                % The mat file exists and the lock doesn't - great
-                chunks_unfinished(a) = false; % Mark as read
-            otherwise
-                % Computation in progress. Go on to the next chunk
-                continue;
-        end
-    end
-    % Wait a bit - just to let all the locks be freed
-    pause(0.05);
-    % Check if we're done
-    if ~any(chunks_unfinished)
-        break;
-    end
-end
-
-% Tidy up files
-clear mi
-d = dir([s.work_dir '*.lock']);
-quiet_delete(s.params_file, s.cmd_file, s.input_mmap.name, d(:).name);
-end
-
-function write_bin(A, fname)
-assert(isnumeric(A), 'Exporting non-numeric variables not supported');
-assert(isreal(A), 'Exporting complex numbers not tested');
-fh = fopen(fname, 'w', 'n');
-if fh == -1
-    error('Could not open file %s for writing.', fname);
-end
-fwrite(fh, A, class(A));
-fclose(fh);
-end
-
-function loop(func, mi, s, shift)
-% Start a timer to check for the kill signal
-if shift ~= 0
-    ht = timer('ExecutionMode', 'fixedSpacing', 'Period', 2, 'StartDelay', 2, 'Tag', s.work_dir, 'TimerFcn', @kill_signal_t, 'UserData', s);
-    start(ht);
-end
-% Go over all possible chunks in order, starting at the input index
-for a = circshift(1:ceil(s.N / s.chunk_size), [1, -shift])
-    % Do the chunk
-    if do_chunk(func, mi, s, a)
-        break; % Error, so quit
-    end
-end
-% Stop the kill signal timer
-if shift ~= 0
-    stop(ht);
-    delete(ht);
-end
-end
-
-function br = do_chunk(func, mi, s, a)
-br = false;
-try
-    % Get the chunk filename
-    fname = chunk_name(s.work_dir, a);
-    % Check if the result file exists
-    if exist(fname, 'file')
-        return;
-    end
-    % Try to grab the lock for this chunk
-    lock = get_file_lock(fname);
-    if isempty(lock)
-        return;
-    end
-    % Set the chunk indices
-    ind = get_chunk_indices(a, s);
-    % Compute the results
-    for b = numel(ind):-1:1
-        output{b} = func(mi.Data.input(:,ind(b)));
-    end
-    % Write out the data
-    save(fname, 'output', '-v7');
-catch me
-    % Report the error
-    fprintf('%s\n', getReport(me, 'basic'));
-    % Quit
-    br = true;
-end
-end
-
-function quiet_delete(varargin)
-for fname = varargin
-    if exist(fname{1}, 'file')
-        delete(fname{1});
-    end
-end
-end
-
 function cleanup_all(s, hb, keep)
 % Stop any timers
 ht = timerfindall('Tag', s.work_dir);
@@ -535,27 +456,21 @@ end
 % Check if we need to send the kill signal
 if ~kill_signal(s)
     % Send the signal
+    kill_signal(s);
     fprintf('Please wait while the workers are halted.\n');
-    delete(s.params_file);
+    keep = false;
     % Wait for the workers to stop
     str = [s.work_dir '*.lock'];
     tic;
     while ~isempty(dir(str)) && toc < 4
         pause(0.05);
     end
+end
+if ~keep
+    % Wait for all files to be closed
     pause(0.05);
     % Remove all the other files and the work directory
     rmdir(s.work_dir, 's');
-elseif ~keep
-    % Remove all the other files and the work directory
-    rmdir(s.work_dir, 's');
-end
-end
-
-function kill_signal_t(ht, varargin)
-% Check for the kill signal
-if kill_signal(get(ht, 'UserData'))
-    quit force; % Stop immediately
 end
 end
 

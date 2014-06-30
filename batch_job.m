@@ -156,30 +156,6 @@ end
 output = reshape(mo.Data.output, outsize);
 end
 
-function preallocate_file(name, nbytes)
-fh = javaObject('java.io.RandomAccessFile', name, 'rw');
-% Allocate the right amount of space
-fh.setLength(nbytes);
-% Close the file
-fh.close();
-end
-
-function write_bin(A, fname)
-assert(isnumeric(A), 'Exporting non-numeric variables not supported');
-assert(isreal(A), 'Exporting complex numbers not tested');
-fh = fopen(fname, 'w', 'n');
-if fh == -1
-    error('Could not open file %s for writing.', fname);
-end
-fwrite(fh, A, class(A));
-fclose(fh);
-end
-
-function n = num_bytes(A)
-n = whos('A');
-n = n.bytes;
-end
-
 function loop(func, mi, mo, n, worker)
 % Initialize values
 N = size(mi.Data.input, 2);
