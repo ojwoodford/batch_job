@@ -117,9 +117,10 @@ varargin = varargin(M);
 progress = progress & usejava('awt');
 
 % Get the arguments
-s.func = varargin{1};
-input = varargin{2};
-assert(isnumeric(input));
+sargs{3} = varargin{2};
+sargs{2} = varargin{1};
+sargs{1} = cd();
+assert(isnumeric(varargin{2}));
 N = numel(varargin);
 if N > 2 && ~isempty(varargin{3})
     workers = varargin{3};
@@ -132,168 +133,21 @@ end
 isposint = @(A) isscalar(A) && isnumeric(A) && round(A) == A && A > 0;
 for w = 1:size(workers, 1)
     assert(ischar(workers{w,1}) && isposint(workers{w,2}));
+    if isequal(workers{w,1}, '')
+        workers{w,2} = workers{w,2} - ~async; % Start one less if we use this MATLAB instance too
+    end
 end
 if N > 3
-    s.global_data = varargin{4};
+    sargs{4} = varargin{4};
 end
 
-% Get size and reshape data
-s.insize = size(input);
-s.N = s.insize(end);
-s.insize(end) = 1;
-input = reshape(input, prod(s.insize), s.N);
-
-% Construct the function
-func = construct_function(s);
-
-% Have at least 10 seconds computation time per chunk, to reduce race
-% conditions and improve memory cache efficiency
-s.chunk_time = 10;
-s.chunk_size = 1;
-
-% Initialize the working directory path
-s.cwd = strrep(cd(), '\', '/');
-s.work_dir = [s.cwd '/batch_job_' tmpname() '/'];
-
-% Create a temporary working directory
-mkdir(s.work_dir);
-s.params_file = [s.work_dir 'params.mat'];
-% Create the some file names
-s.input_mmap.name = [s.work_dir 'input_mmap.dat'];
-s.cmd_file = [s.work_dir 'cmd_script.bat'];
-% Construct the format
-s.input_mmap.format = {class(input), size(input), 'input'};
-s.input_mmap.writable = false;
+% Submit the job to the workers
+s = batch_job_submit(sargs{:});
 
 % Create the wait bar
 hb = [];
 if progress
     hb = waitbar(0, 'Starting...', 'Name', 'Batch job processing...');
-end
-
-% Make sure the directory gets deleted on exit or if we quit early
-co = onCleanup(@() cleanup_all(s, hb, keep));
-
-% Create a timer to start the workers if first run takes a long time
-ht = timer('StartDelay', s.chunk_time, 'TimerFcn', @start_workers_t, 'Tag', s.work_dir, 'UserData', {s, input, workers, async, hb});
-
-% Do one instance to work out the size and type of the result, and how long
-% it takes
-start(ht); % Start the timer to start workers if one function evaluation takes too long
-tic;
-output{1} = func(input(:,1));
-t = toc;
-stop(ht); % Stop the timer to start workers if one function evaluation takes too long
-
-% Check if the other workers were started
-wnys = get(ht, 'TasksExecuted') == 0;
-% Delete the timer
-delete(ht);
-
-% If the timing is very short, do more evaluations to get a better estimate
-% of time per evaluation
-if wnys && t < 0.05
-    s.chunk_size = min(floor(0.1 / t) + 1, s.N);
-    tic;
-    for a = s.chunk_size:-1:2
-        output{a} = func(input(:,a));
-    end
-    t = toc / (s.chunk_size - 1);
-end
-
-if s.chunk_size == s.N
-    % Done already!
-    output = matrify(output);
-    if keep
-        mkdir(s.work_dir);
-        save(chunk_name(s.work_dir, 1), 'output', '-v7');
-    end 
-    if async
-        output = @() output;
-    end
-    return;
-end
-
-if wnys
-    % Compute the chunk size
-    s.chunk_size = max(floor(s.chunk_time / t), 1);
-    
-    if s.chunk_size * 2 >= s.N && ~async
-        % No point starting workers
-        % Just finish up now
-        b = numel(output);
-        for a = s.N:-1:b+1
-            output{a} = func(input(:,a));
-        end
-        output = matrify(output);
-        if keep
-            mkdir(s.work_dir);
-            save(chunk_name(s.work_dir, 1), 'output', '-v7');
-        end
-        return;
-    end
-    
-    % Start the workers
-    start_workers(s, input, workers, async, hb);
-else
-    % Workers alread started - save the first chunk
-    % Get the chunk filename
-    fname = chunk_name(s.work_dir, 1);
-    % Check if the lock or result file exists
-    if ~exist(fname, 'file')
-        % Try to grab the lock for this chunk
-        lock = get_file_lock(fname);
-        if ~isempty(lock)
-            % Write out the data
-            save(fname, 'output', '-v7');
-        end
-        clear lock
-    end
-end
-clear output
-
-if async
-    % Return a handle to the function for getting the output
-    output = @() compute_output(s, func, hb, co);
-else
-    % Return the output
-    output = compute_output(s, func, hb, co);
-end
-end
-
-% Start the workers from a timer
-function start_workers_t(ht, varargin)
-v = get(ht, 'UserData');
-start_workers(v{:});
-end
-
-function start_workers(s, input, workers, async, hb)
-% Check if any workers are needed
-if s.N <= 1
-    return;
-end
-
-% Create the input data to disk
-write_bin(input, s.input_mmap.name);
-
-% Save the command script
-cmd = @(str) sprintf('matlab %s -r "try, batch_job_worker(''%s''); catch, end; quit force;"', str, s.params_file);
-% Open the file
-fh = fopen(s.cmd_file, 'w');
-% Linux bash script
-fprintf(fh, ':; nohup %s\rn:; exit\r\n', cmd('-nodisplay -nosplash'));
-% Windows batch file
-fprintf(fh, '@start %s\n', cmd('-automation'));
-fclose(fh);
-
-% Save the params
-save(s.params_file, '-struct', 's');
-
-% Construct the command string
-chunks_per_worker = max(floor(s.N / (s.chunk_size * sum([workers{:,2}]))), 1); % Approximate number of chunks per worker
-
-% Start the progress bar
-if ~isempty(hb)
     % Initialize the waitbar data
     info.bar = hb;
     info.time = tic();
@@ -305,63 +159,28 @@ if ~isempty(hb)
     start(info.timer);
 end
 
-% Start the other workers
-[p, n, e] = fileparts(s.cmd_file);
-[p, p] = fileparts(p);
-cmd_file = ['./' p '/' n e];
-w_ = 1;
-for w = 1:size(workers, 1)
-    if ~isequal(workers{w,1}, '')
-        try
-            % Copy the command file
-            [status, cmdout] = system(sprintf('cat %s | ssh %s "cat - > ./batch_job_distrib_cmd.bat"', cmd_file, workers{w,1}));
-            assert(status == 0, cmdout);
-            % Make it executable
-            [status, cmdout] = system(sprintf('ssh %s "chmod u+x batch_job_distrib_cmd.bat"', workers{w,1}));
-            assert(status == 0, cmdout);
-        catch me
-            % Error catching
-            fprintf('Could not copy batch script to host %s\n', workers{w,1});
-            fprintf('%s\n', getReport(me, 'basic'));
-            continue;
-        end
-        % Add on the ssh command
-        cmd = @(n) sprintf('ssh %s ./batch_job_distrib_cmd.bat %d', workers{w,1}, n*chunks_per_worker);
-    else
-        cmd = @(n) sprintf('%s %d', s.cmd_file, n*chunks_per_worker);
-        workers{w,2} = workers{w,2} - ~async; % Start one less if we use this MATLAB instance too
-    end
-    % Start the required number of MATLAB instances on this host
-    for b = 1:workers{w,2}
-        try
-            [status, cmdout] = system(cmd(w_));
-            assert(status == 0, cmdout);
-            w_ = w_ + 1;
-        catch me
-            % Error catching
-            fprintf('Could not instantiate workers on host %s\n', workers{w,1});
-            fprintf('%s\n', getReport(me, 'basic'));
-            break;
-        end
-    end
-    if ~isequal(workers{w,1}, '')
-        % Remove the command file
-        try
-            [status, cmdout] = system(sprintf('ssh %s "rm -f ./batch_job_distrib_cmd.bat"', workers{w,1}));
-            assert(status == 0, cmdout);
-        catch
-        end
-    end
+% Make sure the directory gets deleted on exit or if we quit early
+co = onCleanup(@() cleanup_all(s, hb, keep));
+    
+% Start the workers
+start_workers(s, workers);
+
+if async
+    % Return a handle to the function for getting the output
+    output = @() compute_output(s, hb, co);
+else
+    % Return the output
+    output = compute_output(s, hb, co);
 end
 end
 
-function output = compute_output(s, func, hb, co)
+function output = compute_output(s, hb, co)
 % co required to ensure cleanup doesn't happen before finished in
 % asynchronous case.
 
 try
-    % Open the memory mapped file
-    mi = open_mmap(s.input_mmap);
+    % Do the job initializations
+    [s, mi, func] = setup_job(s.params_file);
     
     % Go over all possible chunks in order, starting at the input index
     for a = 1:ceil(s.N / s.chunk_size)

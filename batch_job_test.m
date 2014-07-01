@@ -1,6 +1,6 @@
 function batch_job_test
 
-I = 1:500;
+I = 1:1000;
 
 tic;
 out2 = batch_job_distrib(@slow_func, I, '-progress');
@@ -21,4 +21,4 @@ fprintf('For loop: %gs. Batch_job_distrib: %gs. Batch_job: %gs. Equal: %d %d.\n'
 function out = slow_func(in)
 rng(in);
 out = rand(3);
-pause(0.1);
+pause(0.2);

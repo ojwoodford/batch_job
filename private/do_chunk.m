@@ -1,8 +1,10 @@
-function do_chunk(func, mi, s, a)
+function ad = do_chunk(func, mi, s, a)
+ad = false;
 % Get the chunk filename
 fname = chunk_name(s.work_dir, a);
 % Check if the result file exists
 if exist(fname, 'file')
+    ad = true; % Mark as already done
     return;
 end
 % Try to grab the lock for this chunk

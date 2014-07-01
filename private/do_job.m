@@ -1,9 +1,9 @@
 % Do the job - but catch any errors
-function me = do_job(job_file, kill)
+function me = do_job(job, kill)
 me = [];
 try
-    % Load the job parameters
-    s = load(job_file);
+    % Do the job initializations
+    [s, mi, func] = setup_job(job);
     
     if kill
         % Start a timer to check for the kill signal
@@ -11,18 +11,10 @@ try
         start(ht);
     end
     
-    % CD to the correct directory
-    cd(s.cwd);
-    
-    % Get the global data
-    func = construct_function(s);
-    
-    % Memory map the indices matrix
-    mi = open_mmap(s.input_mmap);
-    
     % Go over all possible chunks in order, starting at a random index
     N = ceil(s.N / s.chunk_size);
     N = circshift(1:N, [0, -floor(rand(1) * N)]);
+    ad = false(size(N));
     for a = N
         % Check for the kill signal
         if kill_signal(s)
@@ -30,11 +22,16 @@ try
         end
         
         % Do the chunk
-        do_chunk(func, mi, s, a)
+        ad(a) = do_chunk(func, mi, s, a);
+    end
+    
+    if all(ad)
+        % All already done - send the kill signal for this job
+        kill_signal(s);
     end
 catch me
     % Report the error
-    fid = fopen(sprintf('%s.%s.err', job_file, getComputerName()), 'at');
+    fid = fopen(sprintf('%s.%s.err', job, getComputerName()), 'at');
     if ~isequal(fid, -1)
         fprintf(fid, '%s\n', getReport(me, 'basic'));
         fclose(fid);

@@ -6,6 +6,11 @@
 % to a particular directory, by either batch_job_distrib() or
 % batch_job_submit().
 %
+% Notes:
+%  - The workers need not all run the same operating system, but they must
+%    all have working versions of the required functions, including where
+%    these are platform-dependent, e.g. mex files.
+%
 %IN:
 %   job - full or relative path to the directory where batch jobs are
 %         posted, or a filename to a job .mat file if only one job is to be
@@ -20,16 +25,22 @@ function me = batch_job_worker(job)
 % Parse the input
 [job_dir, job_file, ext] = fileparts(job);
 
-% Go to the job directory
-cd(job_dir);
-job_dir = cd(); % Get the absolute path
-
 % Determine if file is given (if so, quit when done)
-if ~isempty(job_file) && isequal(lower(ext), '.mat')
-    % Do the job
-    me = do_job([job_file ext], true);
+if isequal(lower(ext), '.mat')
+    % Check if we need to set the chunk time
+    if exist([job '_'] , 'file')
+        % Set the chunk time
+        set_chunk_time([job '_']);
+    else
+        % Do the job
+        me = do_job(job, true);
+    end
     return;
 end
+
+% Go to the job directory
+cd(job);
+job_dir = cd(); % Get the absolute path
 
 % The work loop
 while 1
