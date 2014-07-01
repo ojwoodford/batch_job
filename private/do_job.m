@@ -11,11 +11,10 @@ try
         start(ht);
     end
     
-    % Go over all possible chunks in order, starting at a random index
+    % Go over all chunks
     N = ceil(s.N / s.chunk_size);
-    N = circshift(1:N, [0, -floor(rand(1) * N)]);
-    ad = false(size(N));
-    for a = N
+    ad = false(1, N);
+    for a = 1:N
         % Check for the kill signal
         if kill_signal(s)
             break;

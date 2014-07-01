@@ -19,6 +19,8 @@
 %OUT:
 %   me - MATLAB exception to an error on the job, if one occurred; []
 %        otherwise.
+%
+% See also BATCH_JOB_SUBMIT, BATCH_JOB_COLLECT
 
 function me = batch_job_worker(job)
 

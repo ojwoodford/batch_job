@@ -24,7 +24,7 @@
 %
 % To run successfully in a given instance of MATLAB, the host computer must
 %  - Have a valid license for MATLAB and all required toolboxes.
-%  - Have write acces to the current directory via the SAME path.
+%  - Have write access to the job_dir directory via the SAME path.
 %  - Have all required functions on the MATLAB path.
 %  - Honour filesystem file locks (not crucial, but safer).
 %
@@ -48,6 +48,7 @@
 %    necessary data in another MATLAB instance. 
 %
 %IN:
+%   job_dir - path of the directory in which batch jobs are listed.
 %   func - a function handle or function name string.
 %   input - Mx..xN numeric input data array, to be iterated over the
 %           trailing dimension.
@@ -60,7 +61,7 @@
 %   h - structure to pass to batch_job_collect() in order to get the
 %       results of the parallelization (if there are any).
 %
-%   See also PARFOR
+%   See also BATCH_JOB_WORKER, BATCH_JOB_COLLECT, PARFOR
 
 function s = batch_job_submit(job_dir, func, input, global_data)
 
@@ -127,4 +128,7 @@ for a = 1:50
 end
 
 % Worker failed. Assume chunk size of 1 and rename params file
-movefile([s.params_file '_'], s.params_file);
+try
+    movefile([s.params_file '_'], s.params_file);
+catch
+end
