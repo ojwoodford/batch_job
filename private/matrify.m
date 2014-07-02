@@ -7,6 +7,6 @@ sz = size(output{1});
 if ~all(cellfun(@(c) isequal(size(c), sz), output, 'UniformOutput', true))
     return;
 end
-sz = [sz 1];
-output = cat(find(sz == 1, 1, 'last'), output{:});
+sz = numel(sz) + (sz(end) ~= 1);
+output = cat(sz, output{:});
 end
