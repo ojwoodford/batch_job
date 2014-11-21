@@ -45,7 +45,8 @@
 % Notes:
 %  - There is little point using this function if the for loop would
 %    complete in a single MATLAB instance faster than it takes to load the
-%    necessary data in another MATLAB instance. 
+%    necessary data in another MATLAB instance. As a rule of thumb, if a
+%    job will complete in under a minute anyway, do not use this function.
 %
 %IN:
 %   job_dir - path of the directory in which batch jobs are listed.
@@ -114,20 +115,29 @@ fclose(fh);
 % Save the params
 save([s.params_file '_'], '-struct', 's', '-mat');
 
-% Start a worker to set the chunk time
-system(s.cmd_file);
-
-% Wait for the worker to set the chunk time
-for a = 1:50
-    pause(0.1);
-    if exist(s.params_file, 'file')
-        % Load the new chunk size
-        s = load(s.params_file, '-mat');
-        return
+try
+    % Start a worker to set the chunk time
+    [status, cmdout] = system(s.cmd_file);
+    assert(status == 0, cmdout);
+    
+    % Wait for the worker to set the chunk time
+    for a = 1:200
+        pause(0.1);
+        if exist(s.params_file, 'file')
+            % Load the new chunk size
+            s = load(s.params_file, '-mat');
+            fprintf('Chosen chunk size: %d.\n', s.chunk_size);
+            return;
+        end
     end
+catch me
+    % Error catching
+    fprintf('Could not instantiate worker to set chunk size.\n');
+    fprintf('%s\n', getReport(me, 'basic'));
 end
 
-% Worker failed. Assume chunk size of 1 and rename params file
+% Worker failed or job too long. Assume chunk size of 1 and rename params file
+fprintf('Failed to estimate chunk size. Setting to 1.\n');
 try
     movefile([s.params_file '_'], s.params_file);
 catch
