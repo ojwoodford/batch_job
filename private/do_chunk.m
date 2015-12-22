@@ -14,9 +14,19 @@ if isempty(lock)
 end
 % Set the chunk indices
 ind = get_chunk_indices(a, s);
+% Start a timeout timer if necessary
+if s.timeout > 0
+    ht = timer('StartDelay', s.timeout, 'TimerFcn', @(varargin) quit('force'));
+    start(ht);
+end
 % Compute the results
 for b = numel(ind):-1:1
     output{b} = func(mi.Data.input(:,ind(b)));
+end
+% Stop the timeout timer
+if s.timeout > 0
+    stop(ht);
+    delete(ht);
 end
 % Write out the data
 save(fname, 'output', '-v7');

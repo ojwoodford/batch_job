@@ -1,6 +1,6 @@
 %BATCH_JOB_SUBMIT Submit a batch job to workers
 %
-%   batch_job_submit(job_dir, func, input, [global_data])
+%   batch_job_submit(job_dir, func, input, [timeout, [global_data]])
 %
 % If you have a for loop which can be written as:
 %
@@ -53,6 +53,9 @@
 %   func - a function handle or function name string.
 %   input - Mx..xN numeric input data array, to be iterated over the
 %           trailing dimension.
+%   timeout - a scalar indicating the maximum time (in seconds) to allow
+%             one iteration to run for, before killing the calling MATLAB
+%             process. Default: 0 (no timeout).
 %   global_data - a data structure, or function handle or function name
 %                 string of a function which returns a data structure, to
 %                 be passed to func. Default: global_data not passed to
@@ -64,13 +67,16 @@
 %
 %   See also BATCH_JOB_WORKER, BATCH_JOB_COLLECT, PARFOR
 
-function s = batch_job_submit(job_dir, func, input, global_data)
+function s = batch_job_submit(job_dir, func, input, timeout, global_data)
 
 % Get the arguments
 s.func = func;
-if nargin > 3
+if nargin < 4
+    timeout = 0;
+elseif nargin > 4
     s.global_data = global_data;
 end
+s.timeout = timeout;
 
 % Get size and reshape data
 assert(isnumeric(input));
@@ -107,10 +113,20 @@ cmd = @(str) sprintf('matlab %s -r "try, batch_job_worker(''%s''); catch, end; q
 % Open the file
 fh = fopen(s.cmd_file, 'w');
 % Linux bash script
-fprintf(fh, ':; nohup %s\rn:; exit\r\n', cmd('-nodisplay -nosplash'));
+fprintf(fh, ':; nohup %s &\rn:; exit\r\n', cmd('-nodisplay -nosplash'));
 % Windows batch file
 fprintf(fh, '@start %s\n', cmd('-automation'));
 fclose(fh);
+% Make it executable
+[status, cmdout] = system(sprintf('chmod u+x "%s"', s.cmd_file));
+assert(status == 0, cmdout);
+
+% If using a timeout, always have a chunk size of one
+if s.timeout > 0
+    % Save the params
+    save([s.params_file], '-struct', 's', '-mat');
+    return;
+end
 
 % Save the params
 save([s.params_file '_'], '-struct', 's', '-mat');

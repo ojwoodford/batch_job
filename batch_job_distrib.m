@@ -81,6 +81,11 @@
 %              immediately, and completing the job in the background.
 %   '-progress' - flag indicating to display a progress bar.
 %   '-keep' - flag indicating intermediate result files should be kept.
+%   '-timeout', timeInSecs - option pair indicating a maximum time to allow
+%                            each iteration to run before killing it. 0
+%                            means no timeout is used. If non-zero, the
+%                            current MATLAB instance is not used to run any
+%                            iterations. Default: 0 (no timeout).
 %
 %OUT:
 %   output - Px..xN numeric or cell output array, or if in asynchronous
@@ -96,8 +101,10 @@ function output = batch_job_distrib(varargin)
 async = false;
 progress = false;
 keep = false;
+timeout = 0;
 M = true(size(varargin));
-for a = 1:nargin
+a = 1;
+while a <= nargin
     V = varargin{a};
     if ischar(V)
         switch V
@@ -110,13 +117,20 @@ for a = 1:nargin
             case '-progress'
                 progress = true;
                 M(a) = false;
+            case '-timeout'
+                a = a + 1;
+                timeout = varargin{a};
+                assert(isscalar(timeout));
+                M(a-1:a) = false;
         end
     end
+    a = a + 1;
 end
 varargin = varargin(M);
 progress = progress & usejava('awt');
 
 % Get the arguments
+sargs{4} = timeout;
 sargs{3} = varargin{2};
 sargs{2} = varargin{1};
 sargs{1} = cd();
@@ -134,11 +148,11 @@ isposint = @(A) isscalar(A) && isnumeric(A) && round(A) == A && A > 0;
 for w = 1:size(workers, 1)
     assert(ischar(workers{w,1}) && isposint(workers{w,2}));
     if isequal(workers{w,1}, '')
-        workers{w,2} = workers{w,2} - ~async; % Start one less if we use this MATLAB instance too
+        workers{w,2} = workers{w,2} - (~async && timeout == 0); % Start one less if we use this MATLAB instance too
     end
 end
 if N > 3
-    sargs{4} = varargin{4};
+    sargs{5} = varargin{4};
 end
 
 % Submit the job to the workers
