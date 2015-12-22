@@ -113,7 +113,7 @@ cmd = @(str) sprintf('matlab %s -r "try, batch_job_worker(''%s''); catch, end; q
 % Open the file
 fh = fopen(s.cmd_file, 'w');
 % Linux bash script
-fprintf(fh, ':; nohup %s &\rn:; exit\r\n', cmd('-nodisplay -nosplash'));
+fprintf(fh, ':; nohup /usr/local/bin/%s &\r\n:; exit 0;\r\n', cmd('-nodisplay -nosplash'));
 % Windows batch file
 fprintf(fh, '@start %s\n', cmd('-automation'));
 fclose(fh);
