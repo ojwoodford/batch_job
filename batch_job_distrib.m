@@ -85,7 +85,11 @@
 %                            each iteration to run before killing it. 0
 %                            means no timeout is used. If non-zero, the
 %                            current MATLAB instance is not used to run any
-%                            iterations. Default: 0 (no timeout).
+%                            iterations. If negative, the absolute value is
+%                            used, but iterations are rerun if they
+%                            previously timed out; otherwise timed-out
+%                            iterations are skipped. Default: 0 (no
+%                            timeout).
 %
 %OUT:
 %   output - Px..xN numeric or cell output array, or if in asynchronous
@@ -174,7 +178,7 @@ if progress
 end
 
 % Make sure the directory gets deleted on exit or if we quit early
-co = onCleanup(@() cleanup_all(s, hb, keep));
+co = onCleanup(@() cleanup_all(s, hb, keep, workers));
     
 % Start the workers
 start_workers(s, workers);
@@ -188,7 +192,7 @@ else
 end
 end
 
-function cleanup_all(s, hb, keep)
+function cleanup_all(s, hb, keep, workers)
 % Stop any timers
 ht = timerfindall('Tag', s.work_dir);
 for a = 1:numel(ht)
@@ -218,6 +222,20 @@ if ~keep
     pause(0.05);
     % Remove all the other files and the work directory
     rmdir(s.work_dir, 's');
+end
+% Delete the remote worker scripts
+for w = 1:size(workers, 1)
+    if ~isequal(workers{w,1}, '')
+        % Remove the command file
+        try
+            [status, cmdout] = system(sprintf('ssh %s "rm -f ./batch_job_distrib_cmd.bat"', workers{w,1}));
+            assert(status == 0, cmdout);
+        catch me
+            % Error catching
+            fprintf('Could not delete batch script on host %s\n', workers{w,1});
+            fprintf('%s\n', getReport(me, 'basic'));
+        end
+    end
 end
 end
 

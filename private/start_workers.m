@@ -35,14 +35,6 @@ for w = 1:size(workers, 1)
             break;
         end
     end
-    if ~isequal(workers{w,1}, '')
-        % Remove the command file
-        try
-            [status, cmdout] = system(sprintf('ssh %s "rm -f ./batch_job_distrib_cmd.bat"', workers{w,1}));
-            assert(status == 0, cmdout);
-        catch
-        end
-    end
 end
 end
 
