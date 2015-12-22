@@ -5,7 +5,7 @@
 % This function outputs the data computed by batch jobs which have been
 % started using:
 %
-%   h = batch_job_submit(job_dir, func, input, global_data);
+%   h = batch_job_submit(job_dir, func, input, timeout, global_data);
 %
 % and run on workers running the function:
 %
@@ -27,50 +27,63 @@ if exist(s.params_file, 'file')
     % Do the job initializations
     [s, mi, func] = setup_job(s.params_file);
     
-    % Go over all possible chunks in order, starting at the input index
-    chunks_unfinished = true(ceil(s.N / s.chunk_size), 1);
-    for a = 1:numel(chunks_unfinished)
-        % Do the chunk
-        chunks_unfinished(a) = ~do_chunk(func, mi, s, a);
-    end
-    
-    % Wait for all the chunks to finish
-    while 1
-        % Check for the kill signal (user deleted!)
-        if kill_signal(s)
-            break;
+    if s.timeout == 0
+        % Go over all possible chunks in order, starting at the input index
+        chunks_unfinished = true(ceil(s.N / s.chunk_size), 1);
+        for a = 1:numel(chunks_unfinished)
+            % Do the chunk
+            chunks_unfinished(a) = ~do_chunk(func, mi, s, a);
         end
-        for a = find(chunks_unfinished)'
-            % Get the chunk filename
-            fname = chunk_name(s.work_dir, a);
-            % Check that the file exists and the lock doesn't
-            switch (exist(fname, 'file') ~= 0) * 2 + (exist([fname '.lock'], 'file') ~= 0)
-                case 0
-                    % Neither exist (something went wrong!)
-                    do_chunk(func, mi, s, a); % Do the chunk now if we can
-                    chunks_unfinished(a) = false; % Mark as done regardless
-                    % Check for the kill signal
-                    if kill_signal(s)
-                        break;
-                    end
-                case 1
-                    % Lock file exists - see if we can grab it
-                    lock = get_file_lock(fname, true);
-                    % Now delete it
-                    clear lock
-                case 2
-                    % The mat file exists and the lock doesn't - great
-                    chunks_unfinished(a) = false; % Mark as read
-                otherwise
-                    % Computation in progress. Go on to the next chunk
-                    continue;
+        
+        % Wait for all the chunks to finish
+        while any(chunks_unfinished)
+            % Wait a bit - just to let all the locks be freed
+            pause(0.05);
+            % Check for the kill signal (user deleted!)
+            if kill_signal(s)
+                break;
+            end
+            for a = find(chunks_unfinished)'
+                % Get the chunk filename
+                fname = chunk_name(s.work_dir, a);
+                % Check that the file exists and the lock doesn't
+                switch (exist(fname, 'file') ~= 0) * 2 + (exist([fname '.lock'], 'file') ~= 0)
+                    case 0
+                        % Neither exist (something went wrong!)
+                        do_chunk(func, mi, s, a); % Do the chunk now if we can
+                        chunks_unfinished(a) = false; % Mark as done regardless
+                        % Check for the kill signal
+                        if kill_signal(s)
+                            break;
+                        end
+                    case 1
+                        % Lock file exists - see if we can grab it
+                        lock = get_file_lock(fname, true);
+                        % Now delete it
+                        clear lock
+                    case 2
+                        % The mat file exists and the lock doesn't - great
+                        chunks_unfinished(a) = false; % Mark as read
+                    otherwise
+                        % Computation in progress. Go on to the next chunk
+                        continue;
+                end
             end
         end
-        % Wait a bit - just to let all the locks be freed
-        pause(0.05);
-        % Check if we're done
-        if ~any(chunks_unfinished)
-            break;
+    else
+        % Wait for the chunks to finish
+        chunks_unfinished = true(ceil(s.N / s.chunk_size), 1);
+        while any(chunks_unfinished)
+            % Wait a bit - just to let all the locks be freed
+            pause(0.05);
+            % Check for the kill signal (user deleted!)
+            if kill_signal(s)
+                break;
+            end
+            % Check the remaining chunks
+            for a = find(chunks_unfinished)'
+                chunks_unfinished(a) = exist(chunk_name(s.work_dir, a), 'file') == 0;
+            end
         end
     end
     clear mi lock func
