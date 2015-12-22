@@ -111,7 +111,7 @@ s.input_mmap.writable = false;
 write_bin(input, s.input_mmap.name);
 
 % Save the command script
-write_script(sprintf('batch_job_worker(''%s'')', s.params_file), s.cmd_file);
+write_launch_script(sprintf('batch_job_worker(''%s'')', s.params_file), s.cmd_file);
 
 % If using a timeout, always have a chunk size of one
 if s.timeout ~= 0

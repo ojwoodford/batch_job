@@ -1,4 +1,4 @@
-function write_script(funCall, fname)
+function write_launch_script(funCall, fname)
 % Save the command script
 cmd = @(str) sprintf('matlab %s -r "try, %s; catch, end; quit force;"', str, funCall);
 % Open the file
