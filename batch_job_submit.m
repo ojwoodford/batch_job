@@ -109,17 +109,7 @@ s.input_mmap.writable = false;
 write_bin(input, s.input_mmap.name);
 
 % Save the command script
-cmd = @(str) sprintf('matlab %s -r "try, batch_job_worker(''%s''); catch, end; quit force;"', str, s.params_file);
-% Open the file
-fh = fopen(s.cmd_file, 'w');
-% Linux bash script
-fprintf(fh, ':; nohup /usr/local/bin/%s &\r\n:; exit 0;\r\n', cmd('-nodisplay -nosplash'));
-% Windows batch file
-fprintf(fh, '@start %s\n', cmd('-automation'));
-fclose(fh);
-% Make it executable
-[status, cmdout] = system(sprintf('chmod u+x "%s"', s.cmd_file));
-assert(status == 0, cmdout);
+write_script(sprintf('batch_job_worker(''%s'')', s.params_file), s.cmd_file);
 
 % If using a timeout, always have a chunk size of one
 if s.timeout > 0
