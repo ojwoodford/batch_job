@@ -140,8 +140,21 @@ mo.Data.finished(:) = 0;
 mo.Data.output(:,1) = output(:);
 
 % Start the other workers
+if ispc()
+    executable = 'matlab';
+else
+    executable = '/usr/local/bin/matlab';
+end
 for worker = 2:num_workers
-    [a, a] = system(sprintf('matlab -automation -r "try, batch_job(''%s'', %d); catch, end; quit();" &', params_file, worker));
+    try
+        [status, cmdout] = system(sprintf('%s -automation -nodisplay -r "try, batch_job(''%s'', %d); catch, end; quit();" &', executable, params_file, worker));
+        assert(status == 0, cmdout);
+    catch me
+        % Error catching
+        fprintf('Could not instantiate worker.\n');
+        fprintf('%s\n', getReport(me, 'basic'));
+        break;
+    end
 end
 
 % Start the local worker
