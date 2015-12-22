@@ -17,12 +17,14 @@
 %          object should be cleared, by calling clear('lock'), when the
 %          lock is to be released.
 
-function lock = get_file_lock(fname, force)
+function [lock, cleanup_fun] = get_file_lock(fname, force)
+% Initialize outputs
+lock = [];
+cleanup_fun = @() [];
 % Attempt to grab the lock
 fname = [fname '.lock'];
 % Check that the file exists (backup in case file locking not supported)
 if exist(fname, 'file') && (nargin < 2 || ~force)
-    lock = [];
     return
 end
 jh = javaObject('java.io.RandomAccessFile', fname, 'rw');
@@ -32,7 +34,8 @@ if isempty(lock)
     jh.close();
 else
     % Succeeded - make sure the lock is deleted when finished with
-    lock = onCleanup(@() cleanup_lock(lock, jh, fname));
+    cleanup_fun = @() cleanup_lock(lock, jh, fname);
+    lock = onCleanup(cleanup_fun);
 end
 end
 
