@@ -55,7 +55,9 @@
 %           trailing dimension.
 %   timeout - a scalar indicating the maximum time (in seconds) to allow
 %             one iteration to run for, before killing the calling MATLAB
-%             process. Default: 0 (no timeout).
+%             process. If negative, the absolute value is used, but
+%             iterations are rerun if they previously timed out; otherwise
+%             timed-out iterations are skipped. Default: 0 (no timeout).
 %   global_data - a data structure, or function handle or function name
 %                 string of a function which returns a data structure, to
 %                 be passed to func. Default: global_data not passed to
@@ -112,7 +114,7 @@ write_bin(input, s.input_mmap.name);
 write_script(sprintf('batch_job_worker(''%s'')', s.params_file), s.cmd_file);
 
 % If using a timeout, always have a chunk size of one
-if s.timeout > 0
+if s.timeout ~= 0
     % Save the params
     save([s.params_file], '-struct', 's', '-mat');
     return;
