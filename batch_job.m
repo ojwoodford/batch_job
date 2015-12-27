@@ -1,6 +1,6 @@
 %BATCH_JOB Run a batch job across several instances of MATLAB on the same PC
 %
-%   output = batch_job(func, input, [num_workers, [global_data]])
+%   output = batch_job(func, input, [global_data], ...)
 %
 % If you have a for loop which can be written as:
 %
@@ -11,7 +11,7 @@
 % where both input and output are numeric types, then batch_job() can split
 % the work across multiple MATLAB instances on the same PC, as follows:
 %
-%   output = batch_job(func, input, 4, global_data);
+%   output = batch_job(func, input, global_data);
 %
 % This is a replacement for parfor in this use case, if you don't have the
 % Parallel Computing Toolbox.
@@ -33,12 +33,20 @@
 %   func - a function handle or function name string
 %   input - Mx..xN numeric input data array, to be iterated over the
 %           trailing dimension.
-%   num_workers - number of worker processes to distribute work over.
-%                 Default: feature('numCores').
 %   global_data - a data structure, or function handle or function name
 %                 string of a function which returns a data structure, to
 %                 be passed to func. Default: global_data not passed to
 %                 func.
+%   '-progress' - flag indicating to display a progress bar.
+%   '-worker', num_workers - option pair indicating the number of worker
+%                            processes to distribute work over. Default:
+%                            feature('numCores').
+%   '-timeout', timeInSecs - option pair indicating a maximum time to allow
+%                            each iteration to run before killing it. 0
+%                            means no timeout is used. If non-zero, the
+%                            current MATLAB instance is not used to run any
+%                            iterations. Timed-out iterations are skipped.
+%                            Default: 0 (no timeout).
 %
 %OUT:
 %   output - Px..xN numeric output array.
@@ -62,24 +70,49 @@ if nargin == 2 && ischar(varargin{1}) && isposint(varargin{2})
     % Construct the function
     func = construct_function(s);
     % Work until there is no more data
-    loop(func, mi, mo, s.chunk_size, varargin{2});
+    worker_loop(func, mi, mo, s, varargin{2});
     % Quit
     return;
 end
 
 % We are the server
+% Check for flags
+num_workers = feature('numCores');
+progress = false;
+timeout = 0;
+M = true(size(varargin));
+a = 1;
+while a <= nargin
+    V = varargin{a};
+    if ischar(V)
+        switch V
+            case '-workers'
+                a = a + 1;
+                num_workers = varargin{a};
+                assert(isposint(num_workers), 'num_workers should be a positive integer');
+                M(a-1:a) = false;
+            case '-progress'
+                progress = true;
+                M(a) = false;
+            case '-timeout'
+                a = a + 1;
+                timeout = varargin{a};
+                assert(isscalar(timeout));
+                M(a-1:a) = false;
+        end
+    end
+    a = a + 1;
+end
+varargin = varargin(M);
+s.progress = progress & usejava('awt');
+s.timeout = timeout / (24 * 60 * 60); % Convert from seconds to days
+use_local = timeout == 0;
+
 % Get the arguments
 s.func = varargin{1};
 input = varargin{2};
-assert(isnumeric(input));
-if nargin > 2
-    assert(isposint(varargin{3}), 'num_workers should be a positive integer');
-    num_workers = varargin{3};
-else
-    num_workers = feature('numCores');
-end
-if nargin > 3
-    s.global_data = varargin{4};
+if numel(varargin) > 2
+    s.global_data = varargin{3};
 end
 % Get size and reshape data
 s.insize = size(input);
@@ -94,6 +127,9 @@ func = construct_function(s);
 tic;
 output = func(reshape(input(:,1), s.insize));
 t = toc;
+if timeout ~= 0
+    t = Inf;
+end
 assert(isnumeric(output), 'function output must be a numeric type');
 % Compute the output size
 outsize = [size(output) N];
@@ -104,6 +140,7 @@ end
 % Have at least 10 seconds computation time per chunk, to reduce race
 % conditions
 s.chunk_size = max(ceil(10 / t), 1);
+fprintf('Chosen chunk size: %d.\n', s.chunk_size);
 num_workers = min(ceil(N / s.chunk_size), num_workers);
 
 % Create a temporary working directory
@@ -119,16 +156,20 @@ s.input_mmap.name = [s.work_dir 'input_mmap.dat'];
 s.output_mmap.name = [s.work_dir 'output_mmap.dat'];
 % Create the files on disk
 write_bin(input, s.input_mmap.name);
-preallocate_file(s.output_mmap.name, 4 + num_workers + num_bytes(output) * N);
+preallocate_file(s.output_mmap.name, 4 + num_workers * 13 + num_bytes(output) * N);
 % Construct the formats
 s.input_mmap.format = {class(input), size(input), 'input'};
 s.input_mmap.writable = false;
-s.output_mmap.format = {'uint32', [1 1], 'index'; 'uint8', [num_workers 1], 'finished'; class(output), [numel(output) N], 'output'};
+s.output_mmap.format = {'uint32', [1 1], 'index'; ...
+                        'uint8', [num_workers 1], 'finished'; ...
+                        'uint32', [num_workers 1], 'PID'; ...
+                        'double', [num_workers 1], 'timeout'; ...
+                        class(output), [numel(output) N], 'output'};
 s.output_mmap.writable = true;
 
 % Save the params
-params_file = [s.work_dir 'params.mat'];
-save(params_file, '-struct', 's');
+s.params_file = [s.work_dir 'params.mat'];
+save(s.params_file, '-struct', 's');
 
 % Open the memory mapped files
 mi = open_mmap(s.input_mmap);
@@ -136,44 +177,71 @@ mo = open_mmap(s.output_mmap);
 
 % Set the data
 mo.Data.index = uint32(2);
+mo.Data.timeout(:) = Inf;
 mo.Data.finished(:) = 0;
 mo.Data.output(:,1) = output(:);
+mo.Data.output(:,2:end) = NaN;
 
 % Start the other workers
-if ispc()
-    executable = 'matlab';
-else
-    executable = '/usr/local/bin/matlab';
-end
-for worker = 2:num_workers
-    try
-        [status, cmdout] = system(sprintf('%s -automation -nodisplay -r "try, batch_job(''%s'', %d); catch, end; quit();" &', executable, params_file, worker));
-        assert(status == 0, cmdout);
-    catch me
-        % Error catching
-        fprintf('Could not instantiate worker.\n');
-        fprintf('%s\n', getReport(me, 'basic'));
+workers_started = 0;
+for worker = 1+use_local:num_workers
+    if ~start_worker(worker, s.params_file)
         break;
     end
+    workers_started = workers_started + 1;
 end
 
-% Start the local worker
-loop(func, mi, mo, s.chunk_size, 1);
-
-% Wait for all the workers to finish
-while ~all(mo.Data.finished)
-    pause(0.01);
+if use_local
+    % Start the local worker
+    local_loop(func, mi, mo, s);
+else
+    assert(workers_started > 0, 'No workers were successfully started');
+    % Wait until finished
+    idle_loop(mo, s);
 end
 
 % Get the output
 output = reshape(mo.Data.output, outsize);
 end
 
-function loop(func, mi, mo, n, worker)
+function worker_loop(func, mi, mo, s, worker)
 % Initialize values
 N = size(mi.Data.input, 2);
-n = uint32(n);
-if worker == 1 && usejava('awt')
+n = uint32(s.chunk_size);
+mo.Data.PID(worker) = feature('getpid');
+% Continue until there is no more data to get
+while 1
+    % Get and increment the current index - assume this is atomic!
+    ind = mo.Data.index;
+    mo.Data.index = ind + n;
+    % Check that there is stuff to be done
+    ind = double(ind);
+    if ind > N
+        % Nothing left to do, so quit
+        break;
+    end
+    % Do a chunk
+    for a = ind:min(ind+n-1, N)
+        % Set the timeout time
+        mo.Data.timeout(worker) = now() + s.timeout;
+        % Compute the results
+        try
+            mo.Data.output(:,a) = reshape(func(mi.Data.input(:,a)), [], 1);
+        catch
+        end
+    end
+    % Disable the timeout
+    mo.Data.timeout(worker) = Inf;
+end
+% Flag as finished
+mo.Data.finished(worker) = 1;
+end
+
+function local_loop(func, mi, mo, s)
+% Initialize values
+N = size(mi.Data.input, 2);
+n = uint32(s.chunk_size);
+if s.progress
     % Create progress function
     info.start_prop = double(mo.Data.index) / N;
     info.bar = waitbar(info.start_prop, 'Starting...', 'Name', 'Batch job processing...');
@@ -193,14 +261,54 @@ while 1
         % Nothing left to do, so quit
         break;
     end
-    % Compute the results
+    % Do a chunk
     for a = ind:min(ind+n-1, N)
+        % Compute the results
         mo.Data.output(:,a) = reshape(func(mi.Data.input(:,a)), [], 1);
     end
+    % Display progress and other bits
     progress(ind/N);
 end
 % Flag as finished
-mo.Data.finished(worker) = 1;
+mo.Data.finished(1) = 1;
+progress(1);
+% Wait for all the workers to finish
+while ~all(mo.Data.finished)
+    pause(0.01);
+end
+end
+
+function idle_loop(mo, s)
+% Initialize progress bar
+N = size(mo.Data.output, 2);
+if s.progress
+    % Create progress function
+    info.start_prop = double(mo.Data.index) / N;
+    info.bar = waitbar(info.start_prop, 'Starting...', 'Name', 'Batch job processing...');
+    info.timer = tic();
+    progress = @(v) progressbar(info, v);
+else
+    progress = @(v) v;
+end
+% Continue until finished
+while ~all(mo.Data.finished)
+    pause(0.05);
+    % Display progress
+    ind = mo.Data.index;
+    progress(ind/N);
+    % Check for timed-out processes
+    for worker = 1:numel(mo.Data.timeout)
+        if mo.Data.timeout(worker) > now()
+            continue;
+        end
+        % Kill the process
+        kill_process(mo.Data.PID(worker));
+        % Set the timeout to infinity
+        mo.Data.timeout(worker) = Inf;
+        % Start a new process
+        start_worker(worker, s.params_file);
+    end
+end
 progress(1);
 end
 
@@ -209,7 +317,8 @@ function progressbar(info, proportion)
 try
     if proportion >= 1
         close(info.bar);
-        drawnow;
+        drawnow();
+        return;
     end
     t_elapsed = toc(info.timer);
     t_remaining = ((1 - proportion) * t_elapsed) / (proportion - info.start_prop);
@@ -222,7 +331,26 @@ try
         end
     end
     waitbar(proportion, info.bar, newtitle);
+    drawnow();
 catch
+end
+end
+
+function success = start_worker(worker, params_file)
+success = false;
+if ispc()
+    executable = 'matlab';
+else
+    executable = '/usr/local/bin/matlab';
+end
+try
+    [status, cmdout] = system(sprintf('%s -automation -nodisplay -r "try, batch_job(''%s'', %d); catch, end; quit();" &', executable, params_file, worker));
+    assert(status == 0, cmdout);
+    success = true;
+catch me
+    % Error catching
+    fprintf('Could not instantiate worker.\n');
+    fprintf('%s\n', getReport(me, 'basic'));
 end
 end
 

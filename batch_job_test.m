@@ -3,12 +3,12 @@ function out = batch_job_test
 I = 1:500;
 
 tic;
-out2 = batch_job_distrib(@slow_func, I, '-progress');
-t2 = toc;
+out3 = batch_job(@slow_func, I, '-progress');
+t3 = toc;
 
 tic;
-out3 = batch_job(@slow_func, I);
-t3 = toc;
+out2 = batch_job_distrib(@slow_func, I, '-progress');
+t2 = toc;
 
 tic;
 for a = I
@@ -20,6 +20,7 @@ fprintf('For loop: %gs. Batch_job_distrib: %gs. Batch_job: %gs. Equal: %d %d.\n'
 
 % Test timeouts and error catching
 out = batch_job_distrib(@random_func, 1:50, '-progress', '-timeout', -1);
+out = batch_job(@random_func, 1:50, '-progress', '-timeout', 1);
 end
 
 function out = slow_func(in)
@@ -28,11 +29,14 @@ out = rand(3);
 pause(0.1);
 end
 
-function out = random_func(in)
+function out = random_func(in, sz)
 assert(mod(in, 13) ~= 0, 'Unlucky for some');
 seed = now;
 seed = floor((seed - floor(seed)) * 2^32);
 rng(seed);
-out = rand(ceil(rand(1) * 3));
+if nargin < 2
+    sz = 2; %ceil(rand(1) * 3);
+end
+out = rand(sz);
 pause(rand(1) * 1.1);
 end
