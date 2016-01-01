@@ -60,7 +60,7 @@ if exist(s.params_file, 'file')
                         % Lock file exists - see if we can grab it
                         lock = get_file_lock(fname, true);
                         % Now delete it
-                        clear lock
+                        clear lock;
                     case 2
                         % The mat file exists and the lock doesn't - great
                         chunks_unfinished(a) = false; % Mark as read

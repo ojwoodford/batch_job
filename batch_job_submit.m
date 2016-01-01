@@ -94,6 +94,10 @@ s.chunk_size = 1;
 
 % Initialize the working directory path
 s.cwd = strrep(cd(), '\', '/');
+job_dir = strrep(job_dir, '\', '/');
+if job_dir(end) == '/'
+    job_dir = job_dir(1:end-1);
+end
 job_name = tmpname();
 s.work_dir = [job_dir '/batch_job_' job_name '/'];
 

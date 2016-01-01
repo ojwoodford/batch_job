@@ -28,20 +28,31 @@ if exist(fname, 'file') && (nargin < 2 || ~force)
     return
 end
 jh = javaObject('java.io.RandomAccessFile', fname, 'rw');
-lock = jh.getChannel().tryLock();
-if isempty(lock)
+lock_ = jh.getChannel().tryLock();
+if isempty(lock_)
     % Failed - something else has the lock
     jh.close();
 else
     % Succeeded - make sure the lock is deleted when finished with
-    cleanup_fun = @() cleanup_lock(lock, jh, fname);
-    lock = onCleanup(cleanup_fun);
+    lock = onCleanup(@() cleanup_lock(lock_, jh, fname));
+    if nargout > 1
+        cleanup_fun = @() cleanup_lock(lock_, jh, fname);
+    end
 end
 end
 
 function cleanup_lock(lock, jh, fname)
 % Free and delete the lock file
+try
 lock.release();
+catch
+end
+try
 jh.close();
+catch
+end
+try
 delete(fname);
+catch
+end
 end

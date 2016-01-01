@@ -8,7 +8,9 @@ fprintf(fh, ':; nohup /usr/local/bin/%s &\r\n:; exit 0;\r\n', cmd('-nodisplay -n
 % Windows batch file
 fprintf(fh, '@start %s\n', cmd('-automation'));
 fclose(fh);
-% Make it executable
-[status, cmdout] = system(sprintf('chmod u+x "%s"', fname));
-assert(status == 0, cmdout);
+if ~ispc()
+    % Make it executable
+    [status, cmdout] = system(sprintf('chmod u+x "%s"', fname));
+    assert(status == 0, cmdout);
+end
 end

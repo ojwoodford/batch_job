@@ -60,17 +60,32 @@ isposint = @(A) isscalar(A) && isnumeric(A) && round(A) == A && A > 0;
 % Determine if we are a worker
 if nargin == 2 && ischar(varargin{1}) && isposint(varargin{2})
     % We are a worker
-    % Load the parameters
-    s = load(varargin{1});
+    worker = varargin{2};
+    % Load the first two parameters
+    s = load(varargin{1}, 'cwd', 'output_mmap');
     % CD to the correct directory
     cd(s.cwd);
-    % Open the memory mapped files
-    mi = open_mmap(s.input_mmap);
+    % Open the output file
     mo = open_mmap(s.output_mmap);
-    % Construct the function
-    func = construct_function(s);
+    try
+        % Load all the parameters
+        s = load(varargin{1});
+        % Open the input data file
+        mi = open_mmap(s.input_mmap);
+        % Register the process id
+        mo.Data.PID(worker) = feature('getpid');
+        % Construct the function
+        func = construct_function(s);
+    catch me
+        % Flag as done
+        mo.Data.finished(worker) = 1;
+        % Error catching
+        fprintf('Could not initialise worker %d.\n', worker);
+        fprintf('%s\n', getReport(me, 'basic'));
+        return;
+    end
     % Work until there is no more data
-    worker_loop(func, mi, mo, s, varargin{2});
+    worker_loop(func, mi, mo, s, worker);
     % Quit
     return;
 end
@@ -144,8 +159,8 @@ fprintf('Chosen chunk size: %d.\n', s.chunk_size);
 num_workers = min(ceil(N / s.chunk_size), num_workers);
 
 % Create a temporary working directory
-s.cwd = cd();
-s.work_dir = [s.cwd filesep 'batch_job_' tmpname() filesep];
+s.cwd = strrep(cd(), '\', '/');
+s.work_dir = [strrep(fullfile(s.cwd, ['batch_job_' tmpname()]), '\', '/'), '/'];
 mkdir(s.work_dir);
 % Make sure the directory gets deleted on exit
 co = onCleanup(@() rmdir(s.work_dir, 's')); % Comment out this line if you want to keep all files for debugging
@@ -208,7 +223,6 @@ function worker_loop(func, mi, mo, s, worker)
 % Initialize values
 N = size(mi.Data.input, 2);
 n = uint32(s.chunk_size);
-mo.Data.PID(worker) = feature('getpid');
 % Continue until there is no more data to get
 while 1
     % Get and increment the current index - assume this is atomic!
@@ -301,6 +315,7 @@ while ~all(mo.Data.finished)
         if mo.Data.timeout(worker) > now()
             continue;
         end
+        %fprintf('Restarting worker %d.\n', worker);
         % Kill the process
         kill_process(mo.Data.PID(worker));
         % Set the timeout to infinity
@@ -353,4 +368,3 @@ catch me
     fprintf('%s\n', getReport(me, 'basic'));
 end
 end
-
