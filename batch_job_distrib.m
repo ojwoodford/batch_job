@@ -97,7 +97,7 @@
 %            array when called (blocking while the batch job finishes, if
 %            necessary).
 %
-%   See also BATCH_JOB_SUBMIT, BATCH_JOB_COLLECT, BATCH_JOB_WORKER, PARFOR
+%   See also BATCH_JOB, BATCH_JOB_SUBMIT, BATCH_JOB_COLLECT, BATCH_JOB_WORKER, PARFOR
 
 function output = batch_job_distrib(varargin)
 

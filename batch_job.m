@@ -29,8 +29,43 @@
 % Passing global_data through a function call also allows the function to
 % do further initializations, such as setting the path.
 %
+% Examples:
+% 1. Independent inputs:
+%
+%   for a = 1:size(input, 2)
+%       output(:,a) = func(input(:,a));
+%   end
+%
+% becomes:
+%   output = batch_job(@func, input);
+% or:
+%   output = batch_job('func', input);
+%
+% 2. Per iteration and global inputs:
+%
+%   for a = 1:size(input, 2)
+%       output(:,a) = func(input(:,a), global_data);
+%   end
+%
+% becomes:
+%   output = batch_job(@func, input, global_data);
+% or:
+%   output = batch_job('func', input, global_data);
+%
+% 3. Per iteration input and global data function:
+%
+%   global_data = global_func();
+%   for a = 1:size(input, 2)
+%       output(:,a) = func(input(:,a), global_data);
+%   end
+%
+% becomes:
+%   output = batch_job(@func, input, @global_func);
+% or:
+%   output = batch_job('func', input, 'global_func');
+%
 %IN:
-%   func - a function handle or function name string
+%   func - a function handle or function name string.
 %   input - Mx..xN numeric input data array, to be iterated over the
 %           trailing dimension.
 %   global_data - a data structure, or function handle or function name
