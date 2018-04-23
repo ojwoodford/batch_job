@@ -7,7 +7,7 @@
 % tolerance from iteration to iteration. Instead, incorrect results or
 % errors occur if you use any of the Simulink speed optimizations.
 %% clean up
-clc; clear; close all
+clc; clear all; close all %#ok<CLALL>
 
 %% Constants
 MODEL = 'Example_Model';
@@ -21,8 +21,8 @@ p2Refernce = simOut.yout{1}.Values;
 %% Run simulation with different relative and absolute tolerances
 
 % setup global_data
-relativeToleranceVector = logspace(-10,1,100);
-absoluteToleranceVector = logspace(-10,1,101);
+relativeToleranceVector = logspace(-10,1,10);
+absoluteToleranceVector = logspace(-10,1,11);
 [global_data.relTol, global_data.absTol] = ndgrid(relativeToleranceVector,absoluteToleranceVector);
 global_data.model = MODEL;
 
@@ -32,4 +32,12 @@ linearIndex = 1:numel(global_data.relTol);
 % number of workers
 workers = {'', feature('numCores')};
 
-results = batch_job_distrib(FUNC, linearIndex, workers, global_data,'-progress');
+results = batch_job_distrib(FUNC, linearIndex, workers, global_data,'-progress', true);
+results = reshape(results, size(global_data.relTol));
+
+%% Analysis
+resultsLength = cellfun(@(x) x.Length(), results);
+absoluteDifference = cellfun(@(x) p2Refernce-x.resample(p2Refernce.Time), results, 'UniformOutput', false);
+relativeDifference = cellfun(@(x) x./p2Refernce*100, absoluteDifference, 'UniformOutput', false);
+maxAbsoluteDifference = cellfun(@(x) max(abs(x.Data)), absoluteDifference);
+maxRelativeDifference = cellfun(@(x) max(abs(x.Data)), relativeDifference);

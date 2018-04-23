@@ -6,7 +6,7 @@
    <!--
 This HTML was auto-generated from MATLAB code.
 To make changes, update the MATLAB code and republish this document.
-      --><title>batch_job_distrib</title><meta name="generator" content="MATLAB 9.4"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2018-04-22"><meta name="DC.source" content="batch_job_distribDoc.m"><style type="text/css">
+      --><title>batch_job_distrib</title><meta name="generator" content="MATLAB 9.4"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2018-04-23"><meta name="DC.source" content="batch_job_distribDoc.m"><style type="text/css">
 html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
 
 html { min-height:100%; margin-bottom:1px; }
@@ -67,34 +67,48 @@ table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px soli
 
 
   </style></head><body><div class="content"><h1>batch_job_distrib</h1><!--introduction--><p>Distribute a MATLAB for loop across several PCs</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Syntax</a></li><li><a href="#2">Input Arguments</a></li><li><a href="#3">Output Arguments</a></li><li><a href="#4">Description</a></li><li><a href="#5">Example</a></li><li><a href="#6">See Also</a></li></ul></div><h2 id="1">Syntax</h2><pre class="language-matlab">output = batch_job_distrib(func, input)
-output = batch_job_distrib(func, input, workers)
-output = batch_job_distrib(func, input, workers, global_data)
-output = batch_job_distrib(func, input, workers, global_data, <span class="keyword">...</span><span class="comment">)</span>
-output = batch_job_distrib(___, optionsAndFlags)
-</pre><h2 id="2">Input Arguments</h2><div><ul><li><b>func</b> - a function handle or function name string</li><li><b>input</b> - Mx..xN numeric input data array, to be iterated over the           trailing dimension.</li><li><b>workers</b> - Wx2 cell array, with each row being {hostname, num_workers},             hostname being a text string indicating the name of a worker             PC (<tt>''</tt> for the local PC), and num_workers being the number of             MATLAB worker instances to start on that PC.</li></ul></div><pre class="language-matlab">Default: {<span class="string">''</span>, feature(<span class="string">'numCores'</span>)}
-</pre><div><ul><li><b>global_data</b> - a data structure, function handle, or function name                 string of a function which returns a data structure, to                 be passed to <tt>func</tt>.</li></ul></div><pre>Default: No global_data</pre><p><b>Options and Flags</b></p><div><ul><li><b>'-async'</b> - flag indicating to operate in asynchronous mode, returning immediately, and completing the job in the background.</li><li><b>'-progress'</b> - flag indicating to display a progress bar.</li><li><b>'-keep'</b> - flag indicating intermediate result files should be kept.</li><li><b>'-timeout', timeInSecs</b> - option pair indicating a maximum time to allow                            each iteration to run before killing it. 0                            means no timeout is used. If non-zero, the                            current MATLAB instance is not used to run any                            iterations. If negative, the absolute value is                            used, but iterations are rerun if they                            previously timed out; otherwise timed-out                            iterations are skipped.</li></ul></div><pre>Default: 0 (no timeout)</pre><h2 id="3">Output Arguments</h2><div><ul><li><b>output</b> - Px..xN numeric or cell output array, or if in asynchronous            mode, a handle to a function which will return the output            array when called (blocking while the batch job finishes, if            necessary).</li></ul></div><h2 id="4">Description</h2><p>This is a replacement for parfor if you don't have the Parallel Computing Toolbox and/or Distributed Computing Server.</p><p>If you have a for loop which can be written as:</p><pre class="language-matlab"><span class="keyword">for</span> a = 1:size(input, 2)
+output = batch_job_distrib(func, input, global_data)
+output = batch_job_distrib(func, input, global_data, workers)
+output = batch_job_distrib(___, <span class="string">'Name'</span>, Value)
+</pre><h2 id="2">Input Arguments</h2><div><ul><li><b>func</b> - a function handle or function name string</li><li><b>input</b> - size(input) = [..., N]. numeric input data array, to be           iterated over the trailing dimension. <tt>input</tt> must be numeric!           The last dimenstion corresponds to each iteration <tt>a</tt>,           <tt>input(:, a)</tt>. The number of iterations corresponds to size of           the last dimension of <tt>input</tt>, N.</li></ul></div><p>Hint: often it is best to think of <tt>input</tt> as an iterator representing the linearIndex (see <a href="matlab:doc('sub2ind')">sub2ind</a>) you want to loop over; then <tt>input</tt> is just a vector of indices and <tt>global_data.someVariable(a)</tt> corresponds to a value used in <tt>func</tt> at iteration <tt>a</tt>.</p><div><ul><li><b>global_data</b> - a data structure, function handle, or function name                 string of a function which returns a data structure, to                 be passed to <tt>func</tt>.</li></ul></div><pre>Default: No global_data</pre><div><ul><li><b>workers</b> - Wx2 cell array, with each row being {hostname, num_workers},             hostname being a text string indicating the name of a worker             PC (<tt>''</tt> for the local PC), and num_workers being the number of             MATLAB worker instances to start on that PC.</li></ul></div><pre class="language-matlab">Default: {<span class="string">''</span>, feature(<span class="string">'numCores'</span>)}
+</pre><p><b>Name-Value Pairs</b></p><div><ul><li><b>'-async', true or false</b> - flag indicating to operate in asynchronous. mode, returning immediately, and completing the job in the background.</li></ul></div><pre>Default: false</pre><div><ul><li><b>'-progress', true or false</b> - flag indicating to display a progress bar.</li></ul></div><pre>Default: false</pre><div><ul><li><b>'-keep', true or false</b> - flag indicating intermediate result files                              should be kept.</li></ul></div><pre>Default: false</pre><div><ul><li><b>'-timeout', timeInSecs</b> - option pair indicating a maximum time to allow                            each iteration to run before killing it. 0                            means no timeout is used. If non-zero, the                            current MATLAB instance is not used to run any                            iterations. If negative, the absolute value is                            used, but iterations are rerun if they                            previously timed out; otherwise timed-out                            iterations are skipped.</li></ul></div><pre>Default: 0 (no timeout)</pre><h2 id="3">Output Arguments</h2><div><ul><li><b>output</b> - Px..xN numeric array, cell output array, or if in asynchronous            mode, a handle to a function which will return the output            array when called (blocking while the batch job finishes, if            necessary). Each column corresponds to an iteration <tt>a</tt>,            <tt>output(:,a)</tt>.</li></ul></div><h2 id="4">Description</h2><p>This is a replacement for parfor if you don't have the Parallel Computing Toolbox and/or Distributed Computing Server.</p><p>If you have a for loop which can be written as:</p><pre class="language-matlab"><span class="keyword">for</span> a = 1:size(input, 2)
     output(:,a) = func(input(:,a), global_data);
 <span class="keyword">end</span>
-</pre><p>where <tt>input</tt> is a numeric array or cell array, then batch_job_distrib() can parallelize the work across multiple worker MATLAB instances on multiple (unlimited) networked worker PCs as follows:</p><pre class="language-matlab">output = batch_job_distrib(func, input, workers, global_data);
+</pre><p>where <tt>input</tt> is a numeric array, then batch_job_distrib() can parallelize the work across multiple workers. <tt>input</tt> must be numeric but <tt>output</tt> does not have be the same class as <tt>input</tt>. <tt>output</tt> is a cell array the same size as <tt>input</tt>. The work is spread across MATLAB instances on multiple (unlimited) networked worker PCs with the following command:</p><pre class="language-matlab">output = batch_job_distrib(func, input, workers, global_data);
 </pre><p>There is an asynchronous mode, which returns immediately, passing back a handle to a function which can load the output data later:</p><pre class="language-matlab">output = batch_job_distrib(<span class="keyword">...</span><span class="comment">, '-async'); % Start an asynchronous computation</span>
 <span class="keyword">...</span><span class="comment">                                        % Do other stuff here</span>
 output = output();                         <span class="comment">% Get the results here</span>
-</pre><p>The function can always spread the work across multiple MATLABs on the local PC, but the requirements for it to run on OTHER PCs are the following:</p><div><ul><li>There is an ssh executable on the system path of the local PC.</li><li>All worker PCs can be ssh'd into non-interactively (i.e. without    manually entering a password).</li><li>MATLAB is on the system path of all worker PCs.</li><li>Every worker has a valid license for MATLAB and all required toolboxes    for the user ssh'ing in.</li><li>The current directory can be written to from all worker PCs via the    SAME path.</li><li>All the required functions are on the MATLAB paths of every worker PC.</li><li>The networked filesystem supports file locks (not crucial, but safer).</li><li>All the worker PCs honour the networked filesystem file locks (again,    not crucial, but safer).</li></ul></div><p>The input arguments <tt>func</tt> and <tt>global_data</tt> may optionally be function names. When the latter is called, it outputs the true <tt>global_data</tt>. Note that global_data could be incorporated into <tt>func</tt> before calling batch_job, using an anonymous function, but the functionality provided here is more flexible. For example, normally every worker loads a copy of global_data into its own memory space, but this can be avoided if global_data is a function which loads the data into shared memory via a memory mapped file. Indeed, this is the most efficient way of doing things - the data doesn't need to be saved to disk first (as it's already on the disk), and only one copy is loaded per PC, regardless of the number of <tt>workers</tt> on that PC. Passing global_data through a function call also allows the function to do further initializations, such as setting the path.</p><p>Notes: * The workers need not all run the same operating system, but they must    all have working versions of the required functions, including where    these are platform-dependent, e.g. mex files. * If a single worker uses 100% of CPU due to the code already being    parallelized internally, then there is little to be gained by having    more than one MATLAB worker instance on each worker PC. * There is little point using this function if the for loop would    complete in a single MATLAB instance faster than it takes to start a    second MATLAB instance and load the necessary data in that instance.</p><h2 id="5">Example</h2><p>TODO</p><h2 id="6">See Also</h2><p><a href="matlab:web('.\html\batch_jobDoc.html')">batch_job</a>, batch_job_submit, batch_job_collect, batch_job_worker,</p><p class="footer"><br><a href="https://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2018a</a><br></p></div><!--
+</pre><p>The function can always spread the work across multiple MATLAB instances on the local PC, but the requirements for it to run on OTHER PCs are the following:</p><div><ul><li>There is an ssh executable on the system path of the local PC.</li><li>All worker PCs can be ssh'd into non-interactively (i.e. without    manually entering a password).</li><li>MATLAB is on the system path of all worker PCs.</li><li>Every worker has a valid license for MATLAB and all required toolboxes    for the user ssh'ing in.</li><li>The current directory can be written to from all worker PCs via the    SAME path.</li><li>All the required functions are on the MATLAB paths of every worker PC.</li><li>The networked filesystem supports file locks (not crucial, but safer).</li><li>All the worker PCs honour the networked filesystem file locks (again,    not crucial, but safer).</li></ul></div><p>The input arguments <tt>func</tt> and <tt>global_data</tt> may optionally be function names. When the latter is called, it outputs the true <tt>global_data</tt>. Note that global_data could be incorporated into <tt>func</tt> before calling batch_job, using an anonymous function, but the functionality provided here is more flexible. For example, normally every worker loads a copy of global_data into its own memory space, but this can be avoided if global_data is a function which loads the data into shared memory via a memory mapped file. Indeed, this is the most efficient way of doing things - the data doesn't need to be saved to disk first (as it's already on the disk), and only one copy is loaded per PC, regardless of the number of <tt>workers</tt> on that PC. Passing global_data through a function call also allows the function to do further initializations, such as setting the path.</p><p>Notes: * The workers need not all run the same operating system, but they must    all have working versions of the required functions, including where    these are platform-dependent, e.g. mex files. * If a single worker uses 100% of CPU due to the code already being    parallelized internally, then there is little to be gained by having    more than one MATLAB worker instance on each worker PC. * There is little point using this function if the for loop would    complete in a single MATLAB instance faster than it takes to start a    second MATLAB instance and load the necessary data in that instance.</p><h2 id="5">Example</h2><p>TODO</p><h2 id="6">See Also</h2><p><a href="matlab:web('.\html\batch_jobDoc.html')">batch_job</a>, batch_job_submit, batch_job_collect, batch_job_worker,</p><p class="footer"><br><a href="https://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2018a</a><br></p></div><!--
 ##### SOURCE BEGIN #####
 %% batch_job_distrib
 % Distribute a MATLAB for loop across several PCs
 %
 %% Syntax
 %   output = batch_job_distrib(func, input)
-%   output = batch_job_distrib(func, input, workers)
-%   output = batch_job_distrib(func, input, workers, global_data)
-%   output = batch_job_distrib(func, input, workers, global_data, ...)
-%   output = batch_job_distrib(___, optionsAndFlags)
+%   output = batch_job_distrib(func, input, global_data)
+%   output = batch_job_distrib(func, input, global_data, workers)
+%   output = batch_job_distrib(___, 'Name', Value)
 %
 %% Input Arguments
 % * *func* - a function handle or function name string
-% * *input* - Mx..xN numeric input data array, to be iterated over the
-%           trailing dimension.
+% * *input* - size(input) = [..., N]. numeric input data array, to be
+%           iterated over the trailing dimension. |input| must be numeric!
+%           The last dimenstion corresponds to each iteration |a|,
+%           |input(:, a)|. The number of iterations corresponds to size of
+%           the last dimension of |input|, N.
+%           
+% Hint: often it is best to think of |input| as an iterator representing
+% the linearIndex (see <matlab:doc('sub2ind') sub2ind>) you want to loop
+% over; then |input| is just a vector of indices and
+% |global_data.someVariable(a)| corresponds to a value used in |func| at
+% iteration |a|.
+%
+% * *global_data* - a data structure, function handle, or function name
+%                 string of a function which returns a data structure, to
+%                 be passed to |func|.
+%
+%  Default: No global_data
+%
 % * *workers* - Wx2 cell array, with each row being {hostname, num_workers},
 %             hostname being a text string indicating the name of a worker
 %             PC (|''| for the local PC), and num_workers being the number of
@@ -102,18 +116,22 @@ output = output();                         <span class="comment">% Get the resul
 %
 %   Default: {'', feature('numCores')}
 %
-% * *global_data* - a data structure, function handle, or function name
-%                 string of a function which returns a data structure, to
-%                 be passed to |func|. 
+% *Name-Value Pairs*
 %
-%  Default: No global_data
-%
-% *Options and Flags*
-%
-% * *'-async'* - flag indicating to operate in asynchronous
+% * *'-async', true or false* - flag indicating to operate in asynchronous.
 % mode, returning immediately, and completing the job in the background.
-% * *'-progress'* - flag indicating to display a progress bar.
-% * *'-keep'* - flag indicating intermediate result files should be kept.
+%
+%  Default: false
+%
+% * *'-progress', true or false* - flag indicating to display a progress bar.
+%
+%  Default: false
+%
+% * *'-keep', true or false* - flag indicating intermediate result files
+%                              should be kept.
+%
+%  Default: false
+%
 % * *'-timeout', timeInSecs* - option pair indicating a maximum time to allow
 %                            each iteration to run before killing it. 0
 %                            means no timeout is used. If non-zero, the
@@ -126,10 +144,11 @@ output = output();                         <span class="comment">% Get the resul
 %  Default: 0 (no timeout)
 %
 %% Output Arguments
-% * *output* - Px..xN numeric or cell output array, or if in asynchronous
+% * *output* - Px..xN numeric array, cell output array, or if in asynchronous
 %            mode, a handle to a function which will return the output
 %            array when called (blocking while the batch job finishes, if
-%            necessary).
+%            necessary). Each column corresponds to an iteration |a|,
+%            |output(:,a)|.
 %
 %% Description
 % This is a replacement for parfor if you don't have the Parallel Computing
@@ -141,9 +160,12 @@ output = output();                         <span class="comment">% Get the resul
 %       output(:,a) = func(input(:,a), global_data);
 %   end
 %
-% where |input| is a numeric array or cell array, then batch_job_distrib()
-% can parallelize the work across multiple worker MATLAB instances on
-% multiple (unlimited) networked worker PCs as follows:
+% where |input| is a numeric array, then batch_job_distrib() can
+% parallelize the work across multiple workers. |input| must be numeric but
+% |output| does not have be the same class as |input|. |output| is a cell
+% array the same size as |input|. The work is spread across MATLAB
+% instances on multiple (unlimited) networked worker PCs with the following
+% command:
 %
 %   output = batch_job_distrib(func, input, workers, global_data);
 %
@@ -154,8 +176,9 @@ output = output();                         <span class="comment">% Get the resul
 %   ...                                        % Do other stuff here
 %   output = output();                         % Get the results here
 %
-% The function can always spread the work across multiple MATLABs on the
-% local PC, but the requirements for it to run on OTHER PCs are the following:
+% The function can always spread the work across multiple MATLAB instances
+% on the local PC, but the requirements for it to run on OTHER PCs are the
+% following:
 %
 % * There is an ssh executable on the system path of the local PC.
 % * All worker PCs can be ssh'd into non-interactively (i.e. without
