@@ -22,7 +22,7 @@ p2Refernce = simOut.yout{1}.Values;
 
 % setup global_data
 relativeToleranceVector = logspace(-10,1,10);
-absoluteToleranceVector = logspace(-10,1,11);
+absoluteToleranceVector = logspace(-10,1,101);
 [global_data.relTol, global_data.absTol] = ndgrid(relativeToleranceVector,absoluteToleranceVector);
 global_data.model = MODEL;
 

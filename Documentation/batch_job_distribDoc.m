@@ -126,6 +126,7 @@
 % the path.
 %
 % Notes:
+%
 % * The workers need not all run the same operating system, but they must
 %    all have working versions of the required functions, including where
 %    these are platform-dependent, e.g. mex files.
@@ -140,4 +141,4 @@
 % TODO
 %
 %% See Also 
-% <matlab:web('.\html\batch_jobDoc.html') batch_job>, batch_job_submit, batch_job_collect, batch_job_worker, 
+% <matlab:web('batch_jobDoc.html') batch_job>, batch_job_submit, batch_job_collect, batch_job_worker, 
