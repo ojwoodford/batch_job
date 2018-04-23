@@ -29,10 +29,7 @@ global_data.model = MODEL;
 % setup input data
 linearIndex = 1:numel(global_data.relTol);
 
-% number of workers
-workers = {'', feature('numCores')};
-
-results = batch_job_distrib(FUNC, linearIndex, workers, global_data,'-progress', true);
+results = batch_job_distrib(FUNC, linearIndex, global_data,'-progress', true,'-keep', true);
 results = reshape(results, size(global_data.relTol));
 
 %% Analysis

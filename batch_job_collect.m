@@ -103,7 +103,7 @@ for a = 1:ceil(s.N / s.chunk_size)
         % Set the chunk indices
         ind = get_chunk_indices(a, s);
         % Read in the data
-        output(ind) = getfield(load(fname), 'output');
+        output(ind) = getfield(load(fname,'output'), 'output');
     end
 end
 % Reshape the output

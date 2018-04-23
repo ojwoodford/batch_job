@@ -1,7 +1,7 @@
 function start_workers(s, workers)
 % Start the workers
 [p, n, e] = fileparts(s.cmd_file);
-[p, p] = fileparts(p);
+[~, p] = fileparts(p);
 cmd_file = ['./' p '/' n e];
 for w = 1:size(workers, 1)
     if ~isequal(workers{w,1}, '')

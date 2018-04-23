@@ -1,16 +1,52 @@
-%BATCH_JOB_SUBMIT Submit a batch job to workers
+%batch_job_submit Submit a batch job to workers
 %
-%   batch_job_submit(job_dir, func, input, [timeout, [global_data]])
+%% Syntax
+%   batch_job_submit(job_dir, func, input)
+%   batch_job_submit(job_dir, func, input, timeout)
+%   batch_job_submit(job_dir, func, input, timeout, global_data)
 %
+%% Input Arguments
+% job_dir - path of the directory in which batch jobs are listed.
+% func - a function handle or function name string.
+% input - size(input) = [..., N]. numeric input data array, to be
+%           iterated over the trailing dimension. input must be numeric!
+%           The last dimenstion corresponds to each iteration a,
+%           input(:, a). The number of iterations corresponds to size of
+%           the last dimension of input, N.
+%           
+% Hint: often it is best to think of input as an iterator representing the
+% linearIndex (see sub2ind) you want to loop over; then input is just a
+% vector of indices and global_data.someVariable(a) corresponds to a
+% value used in func at iteration a.
+%
+% timeout - a scalar indicating the maximum time (in seconds) to allow
+%             one iteration to run for, before killing the calling MATLAB
+%             process. If negative, the absolute value is used, but
+%             iterations are rerun if they previously timed out; otherwise
+%             timed-out iterations are skipped. 
+%
+%             Default: 0 (no timeout).
+%
+% global_data - a data structure, or function handle or function name
+%                 string of a function which returns a data structure, to
+%                 be passed to func. 
+%
+%             Default: No global data.
+%
+%% Output Arguments
+% h - structure to pass to batch_job_collect() in order to get the
+%       results of the parallelization (if there are any).
+%
+%% Description
 % If you have a for loop which can be written as:
 %
 %   for a = 1:size(input, 2)
 %       output(:,a) = func(input(:,a), global_data);
 %   end
 %
-% where input is a numeric array and output is a numeric or cell array,
-% then batch_job_submit() can parallelize the work across multiple worker
-% MATLAB instances on multiple (unlimited) networked worker PCs as follows:
+% where input/output is a numeric or cell array, then batch_job_submit() can
+% parallelize the work across multiple worker MATLAB instances on multiple
+% (unlimited) networked worker PCs as follows:
 %
 %   h = batch_job_submit(job_dir, func, input, global_data);
 %   output = batch_job_collect(h);
@@ -23,10 +59,10 @@
 % in MATLAB on any computer that can see the job_dir directory.
 %
 % To run successfully in a given instance of MATLAB, the host computer must
-%  - Have a valid license for MATLAB and all required toolboxes.
-%  - Have write access to the job_dir directory via the SAME path.
-%  - Have all required functions on the MATLAB path.
-%  - Honour filesystem file locks (not crucial, but safer).
+% * Have a valid license for MATLAB and all required toolboxes.
+% * Have write access to the job_dir directory via the SAME path.
+% * Have all required functions on the MATLAB path.
+% * Honour filesystem file locks (not crucial, but safer).
 %
 % The input arguments func and global_data may optionally be function
 % names. When the latter is called it outputs the true global_data. Note
@@ -43,34 +79,18 @@
 % the path.
 %
 % Notes:
-%  - There is little point using this function if the for loop would
+% * There is little point using this function if the for loop would
 %    complete in a single MATLAB instance faster than it takes to load the
 %    necessary data in another MATLAB instance. As a rule of thumb, if a
 %    job will complete in under a minute anyway, do not use this function.
 %
-%IN:
-%   job_dir - path of the directory in which batch jobs are listed.
-%   func - a function handle or function name string.
-%   input - Mx..xN numeric input data array, to be iterated over the
-%           trailing dimension.
-%   timeout - a scalar indicating the maximum time (in seconds) to allow
-%             one iteration to run for, before killing the calling MATLAB
-%             process. If negative, the absolute value is used, but
-%             iterations are rerun if they previously timed out; otherwise
-%             timed-out iterations are skipped. Default: 0 (no timeout).
-%   global_data - a data structure, or function handle or function name
-%                 string of a function which returns a data structure, to
-%                 be passed to func. Default: global_data not passed to
-%                 func.
+%% Example
+% TODO
 %
-%OUT:
-%   h - structure to pass to batch_job_collect() in order to get the
-%       results of the parallelization (if there are any).
-%
-%   See also BATCH_JOB_WORKER, BATCH_JOB_COLLECT, PARFOR
 
 function s = batch_job_submit(job_dir, func, input, timeout, global_data)
 
+%% Input Parsing and Checking
 % Get the arguments
 s.func = func;
 if nargin < 4
@@ -80,8 +100,13 @@ elseif nargin > 4
 end
 s.timeout = timeout;
 
+% helper function
+getname = @(x) inputname(1);
+
+% Check the input
+assert(isnumeric(input),'%s must be numeric.', getname(input));
+
 % Get size and reshape data
-assert(isnumeric(input));
 s.insize = size(input);
 s.N = s.insize(end);
 s.insize(end) = 1;
@@ -89,6 +114,8 @@ input = reshape(input, prod(s.insize), s.N);
 
 % Have at least 10 seconds computation time per chunk, to reduce race
 % conditions and improve memory cache efficiency
+% TODO
+% Is this necessary?
 s.chunk_time = 10;
 s.chunk_size = 1;
 

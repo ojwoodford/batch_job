@@ -9,8 +9,18 @@
 %% Input Arguments
 % * *job_dir* - path of the directory in which batch jobs are listed.
 % * *func* - a function handle or function name string.
-% * *input* - Mx..xN numeric input data array, to be iterated over the
-%           trailing dimension.
+% * *input* - size(input) = [..., N]. numeric input data array, to be
+%           iterated over the trailing dimension. |input| must be numeric!
+%           The last dimenstion corresponds to each iteration |a|,
+%           |input(:, a)|. The number of iterations corresponds to size of
+%           the last dimension of |input|, N.
+%           
+% Hint: often it is best to think of |input| as an iterator representing
+% the linearIndex (see <matlab:doc('sub2ind') sub2ind>) you want to loop
+% over; then |input| is just a vector of indices and
+% |global_data.someVariable(a)| corresponds to a value used in |func| at
+% iteration |a|.
+%
 % * *timeout* - a scalar indicating the maximum time (in seconds) to allow
 %             one iteration to run for, before killing the calling MATLAB
 %             process. If negative, the absolute value is used, but

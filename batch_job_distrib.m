@@ -8,16 +8,16 @@
 %% Input Arguments
 % func - a function handle or function name string
 % input - Mx..xN numeric input data array, to be iterated over the
-%           trailing dimension. |input| must be numeric!
+%           trailing dimension. input must be numeric!
 % global_data - a data structure, function handle, or function name
 %                 string of a function which returns a data structure, to
-%                 be passed to |func|. 
+%                 be passed to func. 
 %
 %  Default: No global_data
 %
 % workers - Wx2 cell array, with each row being {hostname, num_workers},
 %             hostname being a text string indicating the name of a worker
-%             PC (|''| for the local PC), and num_workers being the number of
+%             PC ('' for the local PC), and num_workers being the number of
 %             MATLAB worker instances to start on that PC. 
 %
 %   Default: {'', feature('numCores')}
@@ -66,10 +66,10 @@
 %       output(:,a) = func(input(:,a), global_data);
 %   end
 %
-% where |input| is a numeric array, then batch_job_distrib() can
-% parallelize the work across multiple workers. |input| must be numeric but
-% |output| does not have be the same class as |input|. |output| is a cell
-% array the same size as |input|. The work is spread across MATLAB
+% where input is a numeric array, then batch_job_distrib() can
+% parallelize the work across multiple workers. input must be numeric but
+% output does not have be the same class as input. output is a cell
+% array the same size as input. The work is spread across MATLAB
 % instances on multiple (unlimited) networked worker PCs with the following
 % command:
 %
@@ -99,9 +99,9 @@
 % * All the worker PCs honour the networked filesystem file locks (again,
 %    not crucial, but safer).
 %
-% The input arguments |func| and |global_data| may optionally be function
-% names. When the latter is called, it outputs the true |global_data|. Note
-% that global_data could be incorporated into |func| before calling
+% The input arguments func and global_data may optionally be function
+% names. When the latter is called, it outputs the true global_data. Note
+% that global_data could be incorporated into func before calling
 % batch_job, using an anonymous function, but the functionality provided
 % here is more flexible. For example, normally every worker loads a copy of
 % global_data into its own memory space, but this can be avoided if
@@ -109,7 +109,7 @@
 % memory mapped file. Indeed, this is the most efficient way of doing 
 % things - the data doesn't need to be saved to disk first (as it's already
 % on the disk), and only one copy is loaded per PC, regardless of the
-% number of |workers| on that PC. Passing global_data through a function call
+% number of workers on that PC. Passing global_data through a function call
 % also allows the function to do further initializations, such as setting
 % the path.
 %

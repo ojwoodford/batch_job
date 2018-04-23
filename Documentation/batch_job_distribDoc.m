@@ -62,7 +62,7 @@
 %  Default: 0 (no timeout)
 %
 %% Output Arguments
-% * *output* - Px..xN numeric array, cell output array, or if in asynchronous
+% * *output* - Px..xN. numeric array, cell output array, or if in asynchronous
 %            mode, a handle to a function which will return the output
 %            array when called (blocking while the batch job finishes, if
 %            necessary). Each column corresponds to an iteration |a|,
