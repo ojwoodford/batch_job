@@ -14,21 +14,33 @@
 %           trailing dimension.
 % * *workers* - Wx2 cell array, with each row being {hostname, num_workers},
 %             hostname being a text string indicating the name of a worker
-%             PC ('' for the local PC), and num_workers being the number of
-%             MATLAB worker instances to start on that PC. Default: {'',
-%             feature('numCores')}.
+%             PC (|''| for the local PC), and num_workers being the number of
+%             MATLAB worker instances to start on that PC. 
+%
+%   Default: {'', feature('numCores')}
+%
 % * *global_data* - a data structure, function handle, or function name
 %                 string of a function which returns a data structure, to
-%                 be passed to |func|. Default: global_data not passed to
-%                 |func|.
+%                 be passed to |func|. 
+%
+%  Default: No global_data
 %
 % *Name-Value Pairs*
 %
 % * *'-async', true or false* - flag indicating to operate in asynchronous
 % mode, returning immediately, and completing the job in the background.
+%
+%  Default: false
+%
 % * *'-progress', true or fase* - flag indicating to display a progress bar.
+%
+%  Default: false
+%
 % * * '-keep', true or false* - flag indicating intermediate result files
 % should be kept.
+%
+%  Default: false
+%
 % * *'-timeout', timeInSecs* - option pair indicating a maximum time to allow
 %                            each iteration to run before killing it. 0
 %                            means no timeout is used. If non-zero, the
@@ -36,8 +48,9 @@
 %                            iterations. If negative, the absolute value is
 %                            used, but iterations are rerun if they
 %                            previously timed out; otherwise timed-out
-%                            iterations are skipped. Default: 0 (no
-%                            timeout).
+%                            iterations are skipped. 
+%
+%  Default: 0 (no timeout)
 %
 %% Output Arguments
 % * *output* - Px..xN numeric or cell output array, or if in asynchronous

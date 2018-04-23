@@ -25,7 +25,7 @@
 function me = batch_job_worker(job)
 
 % Parse the input
-[job_dir, job_file, ext] = fileparts(job);
+[~, job_file, ext] = fileparts(job);
 
 % Determine if file is given (if so, quit when done)
 if isequal(lower(ext), '.mat')

@@ -12,22 +12,29 @@
 %           trailing dimension.
 % * *global_data* - a data structure, function handle, or function name
 %                 string of a function which returns a data structure, to
-%                 be passed to |func|. Default: |global_data| not passed to
-%                 |func|.
+%                 be passed to |func|. 
+%
+%  Default: No global_data
 %
 % *Name-Value Pairs*
 %
 % * *'-progress', true or false* - flag indicating whether to display a
 %                                  progress bar.
+%
+%   Default: false
+%
 % * *'-worker', num_workers* - option pair indicating the number of worker
-%                            processes to distribute work over. Default:
-%                            feature('numCores').
+%                            processes to distribute work over. 
+%
+%   Default: feature('numCores')
+%
 % * *'-timeout', timeInSecs* - option pair indicating a maximum time to allow
 %                            each iteration to run before killing it. 0
 %                            means no timeout is used. If non-zero, the
 %                            current MATLAB instance is not used to run any
 %                            iterations. Timed-out iterations are skipped.
-%                            Default: 0 (no timeout).
+%
+%   Default: 0 (no timeout)
 %
 %% Output Arguments
 % * *output* - Px..xN numeric output array.
