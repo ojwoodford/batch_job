@@ -18,9 +18,11 @@
 %             timed-out iterations are skipped. 
 %
 %             Default: 0 (no timeout).
+%
 % * *global_data* - a data structure, or function handle or function name
 %                 string of a function which returns a data structure, to
 %                 be passed to func. 
+%
 %             Default: No global data.
 %
 %% Output Arguments

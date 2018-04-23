@@ -4,7 +4,7 @@
 %% Syntax
 %   output = batch_job(func, input)
 %   output = batch_job(func, input, global_data)
-%   output = batch_job(___, 'Name', Value)
+%   output = batch_job(___, optionsAndFlags)
 %
 %% Input Arguments
 % * *func* - a function handle or function name string.
@@ -16,13 +16,9 @@
 %
 %  Default: No global_data
 %
-% *Name-Value Pairs*
+% *Options and Flags*
 %
-% * *'-progress', true or false* - flag indicating whether to display a
-%                                  progress bar.
-%
-%   Default: false
-%
+% * *'-progress'* - flag indicating whether to display a progress bar.
 % * *'-worker', num_workers* - option pair indicating the number of worker
 %                            processes to distribute work over. 
 %

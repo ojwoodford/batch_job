@@ -6,7 +6,7 @@
 %   output = batch_job_distrib(func, input, workers)
 %   output = batch_job_distrib(func, input, workers, global_data)
 %   output = batch_job_distrib(func, input, workers, global_data, ...)
-%   output = batch_job_distrib(___, 'Name', Value)
+%   output = batch_job_distrib(___, optionsAndFlags)
 %
 %% Input Arguments
 % * *func* - a function handle or function name string
@@ -25,22 +25,12 @@
 %
 %  Default: No global_data
 %
-% *Name-Value Pairs*
+% *Options and Flags*
 %
-% * *'-async', true or false* - flag indicating to operate in asynchronous
+% * *'-async'* - flag indicating to operate in asynchronous
 % mode, returning immediately, and completing the job in the background.
-%
-%  Default: false
-%
-% * *'-progress', true or fase* - flag indicating to display a progress bar.
-%
-%  Default: false
-%
-% * * '-keep', true or false* - flag indicating intermediate result files
-% should be kept.
-%
-%  Default: false
-%
+% * *'-progress'* - flag indicating to display a progress bar.
+% * *'-keep'* - flag indicating intermediate result files should be kept.
 % * *'-timeout', timeInSecs* - option pair indicating a maximum time to allow
 %                            each iteration to run before killing it. 0
 %                            means no timeout is used. If non-zero, the
@@ -97,8 +87,8 @@
 % * All the worker PCs honour the networked filesystem file locks (again,
 %    not crucial, but safer).
 %
-% The input arguments |func| and global_data may optionally be function
-% names. When the latter is called, it outputs the true global_data. Note
+% The input arguments |func| and |global_data| may optionally be function
+% names. When the latter is called, it outputs the true |global_data|. Note
 % that global_data could be incorporated into |func| before calling
 % batch_job, using an anonymous function, but the functionality provided
 % here is more flexible. For example, normally every worker loads a copy of

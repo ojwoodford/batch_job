@@ -69,7 +69,7 @@ table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px soli
   </style></head><body><div class="content"><h1>batch_job_submit</h1><!--introduction--><p>Submit a batch job to workers</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Syntax</a></li><li><a href="#2">Input Arguments</a></li><li><a href="#3">Output Arguments</a></li><li><a href="#4">Description</a></li><li><a href="#5">Example</a></li><li><a href="#6">See Also</a></li></ul></div><h2 id="1">Syntax</h2><pre class="language-matlab">batch_job_submit(job_dir, func, input)
 batch_job_submit(job_dir, func, input, timeout)
 batch_job_submit(job_dir, func, input, timeout, global_data)
-</pre><h2 id="2">Input Arguments</h2><div><ul><li><b>job_dir</b> - path of the directory in which batch jobs are listed.</li><li><b>func</b> - a function handle or function name string.</li><li><b>input</b> - Mx..xN numeric input data array, to be iterated over the           trailing dimension.</li><li><b>timeout</b> - a scalar indicating the maximum time (in seconds) to allow             one iteration to run for, before killing the calling MATLAB             process. If negative, the absolute value is used, but             iterations are rerun if they previously timed out; otherwise             timed-out iterations are skipped. Default: 0 (no timeout).</li><li><b>global_data</b> - a data structure, or function handle or function name                 string of a function which returns a data structure, to                 be passed to func. Default: global_data not passed to                 func.</li></ul></div><h2 id="3">Output Arguments</h2><div><ul><li><b>h</b> - structure to pass to batch_job_collect() in order to get the       results of the parallelization (if there are any).</li></ul></div><h2 id="4">Description</h2><p>If you have a for loop which can be written as:</p><pre class="language-matlab"><span class="keyword">for</span> a = 1:size(input, 2)
+</pre><h2 id="2">Input Arguments</h2><div><ul><li><b>job_dir</b> - path of the directory in which batch jobs are listed.</li><li><b>func</b> - a function handle or function name string.</li><li><b>input</b> - Mx..xN numeric input data array, to be iterated over the           trailing dimension.</li><li><b>timeout</b> - a scalar indicating the maximum time (in seconds) to allow             one iteration to run for, before killing the calling MATLAB             process. If negative, the absolute value is used, but             iterations are rerun if they previously timed out; otherwise             timed-out iterations are skipped.</li></ul></div><pre>           Default: 0 (no timeout).</pre><div><ul><li><b>global_data</b> - a data structure, or function handle or function name                 string of a function which returns a data structure, to                 be passed to func.</li></ul></div><pre>           Default: No global data.</pre><h2 id="3">Output Arguments</h2><div><ul><li><b>h</b> - structure to pass to batch_job_collect() in order to get the       results of the parallelization (if there are any).</li></ul></div><h2 id="4">Description</h2><p>If you have a for loop which can be written as:</p><pre class="language-matlab"><span class="keyword">for</span> a = 1:size(input, 2)
     output(:,a) = func(input(:,a), global_data);
 <span class="keyword">end</span>
 </pre><p>where input/output is a numeric or cell array, then batch_job_submit() can parallelize the work across multiple worker MATLAB instances on multiple (unlimited) networked worker PCs as follows:</p><pre class="language-matlab">h = batch_job_submit(job_dir, func, input, global_data);
@@ -94,11 +94,15 @@ output = batch_job_collect(h);
 %             one iteration to run for, before killing the calling MATLAB
 %             process. If negative, the absolute value is used, but
 %             iterations are rerun if they previously timed out; otherwise
-%             timed-out iterations are skipped. Default: 0 (no timeout).
+%             timed-out iterations are skipped. 
+%
+%             Default: 0 (no timeout).
+%
 % * *global_data* - a data structure, or function handle or function name
 %                 string of a function which returns a data structure, to
-%                 be passed to func. Default: global_data not passed to
-%                 func.
+%                 be passed to func. 
+%
+%             Default: No global data.
 %
 %% Output Arguments
 % * *h* - structure to pass to batch_job_collect() in order to get the

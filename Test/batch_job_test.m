@@ -1,4 +1,4 @@
-function out = batch_job_test
+function batch_job_test
 % Test two methods work and give the same result as a normal for loop
 I = 1:500;
 
@@ -20,7 +20,7 @@ fprintf('For loop: %gs. Batch_job_distrib: %gs. Batch_job: %gs. Equal: %d %d.\n'
 
 % Test timeouts and error catching
 out = batch_job_distrib(@random_func, 1:50, '-progress', '-timeout', -1); %#ok<NASGU>
-out = batch_job(@random_func, 1:50, '-progress', '-timeout', 1);
+out = batch_job(@random_func, 1:50, '-progress', '-timeout', 1); %#ok<NASGU>
 end
 
 function out = slow_func(in)

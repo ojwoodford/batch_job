@@ -68,7 +68,7 @@ table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px soli
 
   </style></head><body><div class="content"><h1>get_file_lock</h1><!--introduction--><p>Grab a file lock for exclusive access to a file</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Syntax</a></li><li><a href="#2">Input Arguments</a></li><li><a href="#3">Output Arguments:</a></li><li><a href="#4">Description</a></li></ul></div><h2 id="1">Syntax</h2><pre class="language-matlab">lock = get_file_lock(fname)
 lock = get_file_lock(fname, force)
-</pre><h2 id="2">Input Arguments</h2><div><ul><li><b>fname</b> - string name or path of the file to lock. The lock is given the           name [fname '.lock'].</li><li><b>force</b> - indicates whether to try to grab the lock, even if the lock           file exists.           Default: false</li></ul></div><h2 id="3">Output Arguments:</h2><div><ul><li><b>lock</b> - epmty if the lock was not obtained, otherwise, not empty. The          object should be cleared, by calling clear('lock'), when the          lock is to be released.</li></ul></div><h2 id="4">Description</h2><p>Grab a file lock associated with a particular file. The lock is a mutex - only one MATLAB instance can hold the lock at a time. The lock is released when the output object is cleared.</p><p class="footer"><br><a href="https://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2018a</a><br></p></div><!--
+</pre><h2 id="2">Input Arguments</h2><div><ul><li><b>fname</b> - string name or path of the file to lock. The lock is given the           name [fname '.lock'].</li><li><b>force</b> - indicates whether to try to grab the lock, even if the lock           file exists.</li></ul></div><pre>         Default: false</pre><h2 id="3">Output Arguments:</h2><div><ul><li><b>lock</b> - epmty if the lock was not obtained, otherwise, not empty. The          object should be cleared, by calling clear('lock'), when the          lock is to be released.</li></ul></div><h2 id="4">Description</h2><p>Grab a file lock associated with a particular file. The lock is a mutex - only one MATLAB instance can hold the lock at a time. The lock is released when the output object is cleared.</p><p class="footer"><br><a href="https://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2018a</a><br></p></div><!--
 ##### SOURCE BEGIN #####
 %% get_file_lock
 % Grab a file lock for exclusive access to a file
@@ -82,6 +82,7 @@ lock = get_file_lock(fname, force)
 %           name [fname '.lock'].
 % * *force* - indicates whether to try to grab the lock, even if the lock
 %           file exists. 
+%
 %           Default: false
 %
 %% Output Arguments:

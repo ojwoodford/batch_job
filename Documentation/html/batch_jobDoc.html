@@ -68,9 +68,8 @@ table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px soli
 
   </style></head><body><div class="content"><h1>batch_job</h1><!--introduction--><p>Runs a batch job across several instances of MATLAB on the same PC.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Syntax</a></li><li><a href="#2">Input Arguments</a></li><li><a href="#3">Output Arguments</a></li><li><a href="#4">Description</a></li><li><a href="#8">Examples</a></li><li><a href="#11">See Also</a></li></ul></div><h2 id="1">Syntax</h2><pre class="language-matlab">output = batch_job(func, input)
 output = batch_job(func, input, global_data)
-output = batch_job(___, <span class="string">'Name'</span>, Value)
-</pre><h2 id="2">Input Arguments</h2><div><ul><li><b>func</b> - a function handle or function name string.</li><li><b>input</b> - Mx..xN numeric input data array, to be iterated over the           trailing dimension.</li><li><b>global_data</b> - a data structure, function handle, or function name                 string of a function which returns a data structure, to                 be passed to <tt>func</tt>.</li></ul></div><pre>Default: No global data</pre><p><b>Name-Value Pairs</b></p><div><ul><li><b>'-progress', true or false</b> - flag indicating whether to display a                                  progress bar.</li></ul></div><pre class="language-matlab">Default: false
-</pre><div><ul><li><b>'-worker', num_workers</b> - option pair indicating the number of worker                            processes to distribute work over.</li></ul></div><pre class="language-matlab">Default: feature(<span class="string">'numCores'</span>)
+output = batch_job(___, optionsAndFlags)
+</pre><h2 id="2">Input Arguments</h2><div><ul><li><b>func</b> - a function handle or function name string.</li><li><b>input</b> - Mx..xN numeric input data array, to be iterated over the           trailing dimension.</li><li><b>global_data</b> - a data structure, function handle, or function name                 string of a function which returns a data structure, to                 be passed to <tt>func</tt>.</li></ul></div><pre>Default: No global_data</pre><p><b>Options and Flags</b></p><div><ul><li><b>'-progress'</b> - flag indicating whether to display a progress bar.</li><li><b>'-worker', num_workers</b> - option pair indicating the number of worker                            processes to distribute work over.</li></ul></div><pre class="language-matlab">Default: feature(<span class="string">'numCores'</span>)
 </pre><div><ul><li><b>'-timeout', timeInSecs</b> - option pair indicating a maximum time to allow                            each iteration to run before killing it. 0                            means no timeout is used. If non-zero, the                            current MATLAB instance is not used to run any                            iterations. Timed-out iterations are skipped.</li></ul></div><pre class="language-matlab">Default: 0 (no timeout)
 </pre><h2 id="3">Output Arguments</h2><div><ul><li><b>output</b> - Px..xN numeric output array.</li></ul></div><h2 id="4">Description</h2><p>This is a replacement for parfor in this use case, if you don't have the Parallel Computing Toolbox.</p><p>If you have a for loop which can be written as:</p><pre class="language-matlab"><span class="keyword">for</span> a = 1:size(input, 2)
     output(:,a) = func(input(:,a), global_data);
@@ -99,7 +98,7 @@ output = batch_job(___, <span class="string">'Name'</span>, Value)
 %% Syntax
 %   output = batch_job(func, input)
 %   output = batch_job(func, input, global_data)
-%   output = batch_job(___, 'Name', Value)
+%   output = batch_job(___, optionsAndFlags)
 %
 %% Input Arguments
 % * *func* - a function handle or function name string.
@@ -109,15 +108,11 @@ output = batch_job(___, <span class="string">'Name'</span>, Value)
 %                 string of a function which returns a data structure, to
 %                 be passed to |func|. 
 %
-%  Default: No global data
+%  Default: No global_data
 %
-% *Name-Value Pairs*
+% *Options and Flags*
 %
-% * *'-progress', true or false* - flag indicating whether to display a
-%                                  progress bar.
-%
-%   Default: false
-%
+% * *'-progress'* - flag indicating whether to display a progress bar.
 % * *'-worker', num_workers* - option pair indicating the number of worker
 %                            processes to distribute work over. 
 %
