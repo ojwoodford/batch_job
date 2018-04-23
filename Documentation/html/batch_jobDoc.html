@@ -1,0 +1,201 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>batch_job</title><meta name="generator" content="MATLAB 9.4"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2018-04-22"><meta name="DC.source" content="batch_jobDoc.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img, h1 img, h2 img { margin-bottom:0px; } 
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, code { font-size:12px; }
+tt { font-size: 1.2em; }
+pre { margin:0px 0px 20px; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+pre.error { color:red; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><h1>batch_job</h1><!--introduction--><p>Runs a batch job across several instances of MATLAB on the same PC.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Syntax</a></li><li><a href="#2">Input Arguments</a></li><li><a href="#3">Output Arguments</a></li><li><a href="#4">Description</a></li><li><a href="#8">Examples</a></li><li><a href="#11">See Also</a></li></ul></div><h2 id="1">Syntax</h2><pre class="language-matlab">output = batch_job(func, input)
+output = batch_job(func, input, global_data)
+output = batch_job(___, <span class="string">'Name'</span>, Value)
+</pre><h2 id="2">Input Arguments</h2><div><ul><li><b>func</b> - a function handle or function name string.</li><li><b>input</b> - Mx..xN numeric input data array, to be iterated over the           trailing dimension.</li><li><b>global_data</b> - a data structure, function handle, or function name                 string of a function which returns a data structure, to                 be passed to <tt>func</tt>. Default: <tt>global_data</tt> not passed to                 <tt>func</tt>.</li></ul></div><p><b>Name-Value Pairs</b></p><div><ul><li><b>'-progress', true or false</b> - flag indicating whether to display a                                  progress bar.</li><li><b>'-worker', num_workers</b> - option pair indicating the number of worker                            processes to distribute work over. Default:                            feature('numCores').</li><li><b>'-timeout', timeInSecs</b> - option pair indicating a maximum time to allow                            each iteration to run before killing it. 0                            means no timeout is used. If non-zero, the                            current MATLAB instance is not used to run any                            iterations. Timed-out iterations are skipped.                            Default: 0 (no timeout).</li></ul></div><h2 id="3">Output Arguments</h2><div><ul><li><b>output</b> - Px..xN numeric output array.</li></ul></div><h2 id="4">Description</h2><p>This is a replacement for parfor in this use case, if you don't have the Parallel Computing Toolbox.</p><p>If you have a for loop which can be written as:</p><pre class="language-matlab"><span class="keyword">for</span> a = 1:size(input, 2)
+    output(:,a) = func(input(:,a), global_data);
+<span class="keyword">end</span>
+</pre><p>where both <tt>input</tt> and output are numeric types, then batch_job() can split the work across multiple MATLAB instances on the same PC, as follows:</p><p>The input arguments <tt>func</tt> and <tt>global_data</tt> may optionally be function names. When the latter is called, it outputs the true <tt>global_data</tt>. Note that <tt>global_data</tt> could be incorporated into <tt>func</tt> before calling batch_job, using an anonymous function. The functionality provided here simply allows more flexibility. For example, normally every worker loads a copy of <tt>global_data</tt> into its own memory space, but this can be avoided if <tt>global_data</tt> is a function which loads the data into shared memory via a memory mapped file. Indeed, this is the most efficient way of doing things - the data doesn't need to be saved to disk first (as it's already on the disk), and each worker doesn't store its own copy in memory. Passing <tt>global_data</tt> through a function call also allows the function to do further initializations, such as setting the path.</p><h2 id="8">Examples</h2><div><ul><li><b>Independent inputs:</b></li></ul></div><pre class="language-matlab"><span class="keyword">for</span> a = 1:size(input, 2)
+    output(:,a) = func(input(:,a));
+<span class="keyword">end</span>
+</pre><p>becomes:</p><pre class="language-matlab">output = batch_job(@func, input);
+</pre><p>or:</p><pre class="language-matlab">output = batch_job(<span class="string">'func'</span>, input);
+</pre><div><ul><li><b>Per iteration and global inputs:</b></li></ul></div><pre class="language-matlab"><span class="keyword">for</span> a = 1:size(input, 2)
+    output(:,a) = func(input(:,a), global_data);
+<span class="keyword">end</span>
+</pre><p>becomes:</p><pre class="language-matlab">output = batch_job(@func, input, global_data);
+</pre><p>or:</p><pre class="language-matlab">output = batch_job(<span class="string">'func'</span>, input, global_data);
+</pre><div><ul><li><b>Per iteration input and global data function:</b></li></ul></div><pre class="language-matlab">global_data = global_func();
+<span class="keyword">for</span> a = 1:size(input, 2)
+    output(:,a) = func(input(:,a), global_data);
+<span class="keyword">end</span>
+</pre><p>becomes:</p><pre class="language-matlab">output = batch_job(@func, input, @global_func);
+</pre><p>or:</p><pre class="language-matlab">output = batch_job(<span class="string">'func'</span>, input, <span class="string">'global_func'</span>);
+</pre><h2 id="11">See Also</h2><p><a href="matlab:doc('parfor')">parfor</a></p><p class="footer"><br><a href="https://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2018a</a><br></p></div><!--
+##### SOURCE BEGIN #####
+%% batch_job
+% Runs a batch job across several instances of MATLAB on the same PC.
+%
+%% Syntax
+%   output = batch_job(func, input)
+%   output = batch_job(func, input, global_data)
+%   output = batch_job(___, 'Name', Value)
+%
+%% Input Arguments
+% * *func* - a function handle or function name string.
+% * *input* - Mx..xN numeric input data array, to be iterated over the
+%           trailing dimension.
+% * *global_data* - a data structure, function handle, or function name
+%                 string of a function which returns a data structure, to
+%                 be passed to |func|. Default: |global_data| not passed to
+%                 |func|.
+%
+% *Name-Value Pairs*
+%
+% * *'-progress', true or false* - flag indicating whether to display a
+%                                  progress bar.
+% * *'-worker', num_workers* - option pair indicating the number of worker
+%                            processes to distribute work over. Default:
+%                            feature('numCores').
+% * *'-timeout', timeInSecs* - option pair indicating a maximum time to allow
+%                            each iteration to run before killing it. 0
+%                            means no timeout is used. If non-zero, the
+%                            current MATLAB instance is not used to run any
+%                            iterations. Timed-out iterations are skipped.
+%                            Default: 0 (no timeout).
+%
+%% Output Arguments
+% * *output* - Px..xN numeric output array.
+%
+%
+%% Description
+% This is a replacement for parfor in this use case, if you don't have the
+% Parallel Computing Toolbox.
+%%%
+% If you have a for loop which can be written as:
+%
+%   for a = 1:size(input, 2)
+%       output(:,a) = func(input(:,a), global_data);
+%   end
+%%%
+% where both |input| and output are numeric types, then batch_job() can split
+% the work across multiple MATLAB instances on the same PC, as follows:
+%%%
+% The input arguments |func| and |global_data| may optionally be function
+% names. When the latter is called, it outputs the true |global_data|. Note
+% that |global_data| could be incorporated into |func| before calling
+% batch_job, using an anonymous function. The functionality provided here
+% simply allows more flexibility. For example, normally every worker loads
+% a copy of |global_data| into its own memory space, but this can be avoided
+% if |global_data| is a function which loads the data into shared memory via
+% a memory mapped file. Indeed, this is the most efficient way of doing
+% things - the data doesn't need to be saved to disk first (as it's already
+% on the disk), and each worker doesn't store its own copy in memory.
+% Passing |global_data| through a function call also allows the function to
+% do further initializations, such as setting the path.
+%
+%% Examples
+% * *Independent inputs:*
+%
+%   for a = 1:size(input, 2)
+%       output(:,a) = func(input(:,a));
+%   end
+%
+% becomes:
+%
+%   output = batch_job(@func, input);
+%
+% or:
+%
+%   output = batch_job('func', input);
+%%%
+% * *Per iteration and global inputs:*
+%
+%   for a = 1:size(input, 2)
+%       output(:,a) = func(input(:,a), global_data);
+%   end
+%
+% becomes:
+%
+%   output = batch_job(@func, input, global_data);
+%
+% or:
+%
+%   output = batch_job('func', input, global_data);
+%%%
+% * *Per iteration input and global data function:*
+%
+%   global_data = global_func();
+%   for a = 1:size(input, 2)
+%       output(:,a) = func(input(:,a), global_data);
+%   end
+%
+% becomes:
+%
+%   output = batch_job(@func, input, @global_func);
+%
+% or:
+%
+%   output = batch_job('func', input, 'global_func');
+%
+%% See Also 
+% <matlab:doc('parfor') parfor> 
+##### SOURCE END #####
+--></body></html>

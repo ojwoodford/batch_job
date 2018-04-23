@@ -90,6 +90,7 @@
 
 function output = batch_job(varargin)
 
+% function to check for a positive, scalar integer
 isposint = @(A) isscalar(A) && isnumeric(A) && round(A) == A && A > 0;
 
 % Determine if we are a worker

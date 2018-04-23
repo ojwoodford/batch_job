@@ -15,7 +15,6 @@ results = cell(length(relativeToleranceVector), length(absoluteToleranceVector))
 model = 'Example_Model';
 set_param(model, 'RelTol', '1e-10');
 set_param(model,'AbsTol','1e-13');
-set_param(model,'fastrestart','on');
 set_param(model,'SimulationMode', 'Accelerator');
 counter = 0;
 
@@ -24,11 +23,11 @@ for iRelTol = 1:length(relativeToleranceVector)
     for iAbsTol = 1:length(absoluteToleranceVector)
         relTol = relativeToleranceVector(iRelTol);
         absTol = absoluteToleranceVector(iAbsTol);
-        results{iRelTol,iAbsTol} = runSimOnce(relTol,absTol);
+        results{iRelTol,iAbsTol} = runSimOnce2(relTol,absTol);
         counter = counter + 1;
         disp(counter);
     end
 end
-set_param(model,'fastrestart','on');
+
 save('Results Curves.mat','results');
 % absoluteDifference = cellfun(@(x) p2Refernce-x.resample(p2Refernce.Time), results, 'UniformOutput', false);

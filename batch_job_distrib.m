@@ -266,7 +266,7 @@ end
 % Protect against the waitbar being closed
 try
     waitbar(proportion, info.bar, newtitle);
-catch me
+catch
     stop(info.timer);
     delete(info.timer);
 end
