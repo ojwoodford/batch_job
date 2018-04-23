@@ -4,7 +4,7 @@
 %% Syntax
 %   output = batch_job(func, input)
 %   output = batch_job(func, input, global_data)
-%   output = batch_job(___, optionsAndFlags)
+%   output = batch_job(___, 'Name', Value)
 %
 %% Input Arguments
 % * *func* - a function handle or function name string.
@@ -16,10 +16,11 @@
 %
 %  Default: No global_data
 %
-% *Options and Flags*
+% *Name-Value Pair*
 %
-% * *'-progress'* - flag indicating whether to display a progress bar.
-% * *'-worker', num_workers* - option pair indicating the number of worker
+% * *'-progress', true or false* - flag indicating whether to display a
+% progress bar.
+% * *'-workers', num_workers* - option pair indicating the number of worker
 %                            processes to distribute work over. 
 %
 %   Default: feature('numCores')
@@ -34,7 +35,6 @@
 %
 %% Output Arguments
 % * *output* - Px..xN numeric output array.
-%
 %
 %% Description
 % This is a replacement for parfor in this use case, if you don't have the

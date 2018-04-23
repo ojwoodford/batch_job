@@ -1,6 +1,43 @@
 %BATCH_JOB Run a batch job across several instances of MATLAB on the same PC
 %
-%   output = batch_job(func, input, [global_data], ...)
+%% Syntax
+%   output = batch_job(func, input)
+%   output = batch_job(func, input, global_data)
+%   output = batch_job(___, 'Name', Value)
+%
+%% Input Arguments
+% * *func* - a function handle or function name string.
+% * *input* - Mx..xN numeric input data array, to be iterated over the
+%           trailing dimension.
+% * *global_data* - a data structure, function handle, or function name
+%                 string of a function which returns a data structure, to
+%                 be passed to |func|. 
+%
+%  Default: No global_data
+%
+% *Name-Value Pair*
+%
+% * *'-progress', true or false* - flag indicating whether to display a
+% progress bar.
+% * *'-workers', num_workers* - option pair indicating the number of worker
+%                            processes to distribute work over. 
+%
+%   Default: feature('numCores')
+%
+% * *'-timeout', timeInSecs* - option pair indicating a maximum time to allow
+%                            each iteration to run before killing it. 0
+%                            means no timeout is used. If non-zero, the
+%                            current MATLAB instance is not used to run any
+%                            iterations. Timed-out iterations are skipped.
+%
+%   Default: 0 (no timeout)
+%
+%% Output Arguments
+% * *output* - Px..xN numeric output array.
+%
+%% Description
+% This is a replacement for parfor in this use case, if you don't have the
+% Parallel Computing Toolbox.
 %
 % If you have a for loop which can be written as:
 %
@@ -11,13 +48,8 @@
 % where both input and output are numeric types, then batch_job() can split
 % the work across multiple MATLAB instances on the same PC, as follows:
 %
-%   output = batch_job(func, input, global_data);
-%
-% This is a replacement for parfor in this use case, if you don't have the
-% Parallel Computing Toolbox.
-%
 % The input arguments func and global_data may optionally be function
-% names. When the latter is called it outputs the true global_data. Note
+% names. When the latter is called, it outputs the true global_data. Note
 % that global_data could be incorporated into func before calling
 % batch_job, using an anonymous function. The functionality provided here
 % simply allows more flexibility. For example, normally every worker loads
@@ -29,7 +61,7 @@
 % Passing global_data through a function call also allows the function to
 % do further initializations, such as setting the path.
 %
-% Examples:
+%% Examples:
 % 1. Independent inputs:
 %
 %   for a = 1:size(input, 2)
@@ -64,48 +96,27 @@
 % or:
 %   output = batch_job('func', input, 'global_func');
 %
-%IN:
-%   func - a function handle or function name string.
-%   input - Mx..xN numeric input data array, to be iterated over the
-%           trailing dimension.
-%   global_data - a data structure, or function handle or function name
-%                 string of a function which returns a data structure, to
-%                 be passed to func. Default: global_data not passed to
-%                 func.
-%   '-progress' - flag indicating to display a progress bar.
-%   '-worker', num_workers - option pair indicating the number of worker
-%                            processes to distribute work over. Default:
-%                            feature('numCores').
-%   '-timeout', timeInSecs - option pair indicating a maximum time to allow
-%                            each iteration to run before killing it. 0
-%                            means no timeout is used. If non-zero, the
-%                            current MATLAB instance is not used to run any
-%                            iterations. Timed-out iterations are skipped.
-%                            Default: 0 (no timeout).
-%
-%OUT:
-%   output - Px..xN numeric output array.
 %
 %   See also PARFOR
 
-function output = batch_job(varargin)
+function output = batch_job(func, input, varargin)
 
+
+%% Determine if we are a worker
 % function to check for a positive, scalar integer
 isposint = @(A) isscalar(A) && isnumeric(A) && round(A) == A && A > 0;
-
-% Determine if we are a worker
-if nargin == 2 && ischar(varargin{1}) && isposint(varargin{2})
+if nargin == 2 && ischar(func) && isposint(input)
     % We are a worker
-    worker = varargin{2};
+    worker = input;
     % Load the first two parameters
-    s = load(varargin{1}, 'cwd', 'output_mmap');
+    s = load(func, 'cwd', 'output_mmap');
     % CD to the correct directory
     cd(s.cwd);
     % Open the output file
     mo = open_mmap(s.output_mmap);
     try
         % Load all the parameters
-        s = load(varargin{1});
+        s = load(func);
         % Open the input data file
         mi = open_mmap(s.input_mmap);
         % Register the process id
@@ -126,45 +137,53 @@ if nargin == 2 && ischar(varargin{1}) && isposint(varargin{2})
     return;
 end
 
-% We are the server
+%% We are the Server
 % Check for flags
 num_workers = feature('numCores');
 progress = false;
 timeout = 0;
-M = true(size(varargin));
-a = 1;
-while a <= nargin
-    V = varargin{a};
+global_data = [];
+iVar = 1;
+while iVar <= length(varargin)
+    V = varargin{iVar};
     if ischar(V)
-        switch V
+        switch lower(V)
             case '-workers'
-                a = a + 1;
-                num_workers = varargin{a};
-                assert(isposint(num_workers), 'num_workers should be a positive integer');
-                M(a-1:a) = false;
+                iVar = iVar + 1;
+                num_workers = varargin{iVar};
+                 assert(isposint(num_workers), 'num_workers should be a positive integer.');
             case '-progress'
-                progress = true;
-                M(a) = false;
+                iVar = iVar + 1;
+                progress = varargin{iVar};
+                assert(islogical(progress),'-async value must be logical true or false.');
             case '-timeout'
-                a = a + 1;
-                timeout = varargin{a};
+                iVar = iVar + 1;
+                timeout = varargin{iVar};
                 assert(isscalar(timeout));
-                M(a-1:a) = false;
+            otherwise
+                error('Incorrect Name-Value pair.');
         end
+    elseif isstruct(V)
+        global_data = V;
+    else
+        error('Error in Name-value pairs, global_data, or num_workers. Cannot parse inputs. Check your input.');
     end
-    a = a + 1;
+    iVar = iVar + 1;
 end
-varargin = varargin(M);
+
 s.progress = progress & usejava('awt');
 s.timeout = timeout / (24 * 60 * 60); % Convert from seconds to days
 use_local = timeout == 0;
 
+
+%% Do Work
+
 % Get the arguments
-s.func = varargin{1};
-input = varargin{2};
-if numel(varargin) > 2
-    s.global_data = varargin{3};
+s.func = func;
+if ~isempty(global_data)
+    s.global_data = global_data;
 end
+
 % Get size and reshape data
 s.insize = size(input);
 N = s.insize(end);
@@ -181,7 +200,10 @@ t = toc;
 if timeout ~= 0
     t = Inf;
 end
-assert(isnumeric(output), 'function output must be a numeric type');
+
+% Check output
+assert(isnumeric(output), 'func output must be a numeric type.');
+
 % Compute the output size
 outsize = [size(output) N];
 if outsize(2) == 1
@@ -255,6 +277,7 @@ end
 output = reshape(mo.Data.output, outsize);
 end
 
+%%
 function worker_loop(func, mi, mo, s, worker)
 % Initialize values
 N = size(mi.Data.input, 2);
@@ -287,6 +310,7 @@ end
 mo.Data.finished(worker) = 1;
 end
 
+%%
 function local_loop(func, mi, mo, s)
 % Initialize values
 N = size(mi.Data.input, 2);
@@ -328,6 +352,7 @@ while ~all(mo.Data.finished)
 end
 end
 
+%%
 function idle_loop(mo, s)
 % Initialize progress bar
 N = size(mo.Data.output, 2);
@@ -363,6 +388,7 @@ end
 progress(1);
 end
 
+%%
 function progressbar(info, proportion)
 % Protect against the waitbar being closed
 try
@@ -387,6 +413,7 @@ catch
 end
 end
 
+%%
 function success = start_worker(worker, params_file)
 success = false;
 if ispc()
