@@ -1,33 +1,35 @@
+%% Simulink Example
+% This example loops over a simulink model changing the relative tolerance
+% and absolute tolerance. Note that Simulink has optimizations such as
+% "fast restart", "accelerator mode", and "rapid accelerator mode" that
+% possibly could speed up simulation. However, none of these can be used in
+% such a way that you are changing the relative tolerance and absolute
+% tolerance from iteration to iteration. Instead, incorrect results or
+% errors occur if you use any of the Simulink speed optimizations.
+%% clean up
 clc; clear; close all
 
-%% Load Very Accurate Simulation
-% relative tolerance was set to 1e-10
-% absolute tolerance was set to auto
-% Shape Preservation was enabled
-load('Reference Curve.mat')
-p2Refernce = yout{1}.Values;
+%% Constants
+MODEL = 'Example_Model';
+FUNC = @runSimOnce;
+
+%% Simulation with High Accuracy
+% simulate a model with high accuracy for reference
+simOut = sim(MODEL, 'relTol', '1e-12', 'absTol', '1e-15');
+p2Refernce = simOut.yout{1}.Values;
 
 %% Run simulation with different relative and absolute tolerances
+
+% setup global_data
 relativeToleranceVector = logspace(-10,1,100);
 absoluteToleranceVector = logspace(-10,1,101);
-results = cell(length(relativeToleranceVector), length(absoluteToleranceVector));
+[global_data.relTol, global_data.absTol] = ndgrid(relativeToleranceVector,absoluteToleranceVector);
+global_data.model = MODEL;
 
-model = 'Example_Model';
-set_param(model, 'RelTol', '1e-10');
-set_param(model,'AbsTol','1e-13');
-set_param(model,'SimulationMode', 'Accelerator');
-counter = 0;
+% setup input data
+linearIndex = 1:numel(global_data.relTol);
 
+% number of workers
+workers = {'', feature('numCores')};
 
-for iRelTol = 1:length(relativeToleranceVector)
-    for iAbsTol = 1:length(absoluteToleranceVector)
-        relTol = relativeToleranceVector(iRelTol);
-        absTol = absoluteToleranceVector(iAbsTol);
-        results{iRelTol,iAbsTol} = runSimOnce2(relTol,absTol);
-        counter = counter + 1;
-        disp(counter);
-    end
-end
-
-save('Results Curves.mat','results');
-% absoluteDifference = cellfun(@(x) p2Refernce-x.resample(p2Refernce.Time), results, 'UniformOutput', false);
+results = batch_job_distrib(FUNC, linearIndex, workers, global_data,'-progress');
