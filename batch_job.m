@@ -3,7 +3,7 @@
 %% Syntax
 %   output = batch_job(func, input)
 %   output = batch_job(func, input, global_data)
-%   output = batch_job(___, 'Name', Value)
+%   output = batch_job(___, optionOrFlag)
 %
 %% Input Arguments
 % * *func* - a function handle or function name string.
@@ -15,10 +15,10 @@
 %
 %  Default: No global_data
 %
-% *Name-Value Pair*
+% *Options and flags*
 %
-% * *'-progress', true or false* - flag indicating whether to display a
-% progress bar.
+% * *'-progress'* - flag indicating whether to display a progress bar. 
+%                   
 % * *'-workers', num_workers* - option pair indicating the number of worker
 %                            processes to distribute work over. 
 %
@@ -153,20 +153,18 @@ while iVar <= length(varargin)
                 num_workers = varargin{iVar};
                  assert(isposint(num_workers), 'num_workers should be a positive integer.');
             case '-progress'
-                iVar = iVar + 1;
-                progress = varargin{iVar};
-                assert(islogical(progress),'-async value must be logical true or false.');
+                progress = true;
             case '-timeout'
                 iVar = iVar + 1;
                 timeout = varargin{iVar};
                 assert(isscalar(timeout));
             otherwise
-                error('Incorrect Name-Value pair.');
+                 error('Incorrect option or flag pair: %s', varargin{iVar});
         end
     elseif isstruct(V)
         global_data = V;
     else
-        error('Error in Name-value pairs, global_data, or num_workers. Cannot parse inputs. Check your input.');
+        error('Error in option, flag, global_data, or num_workers. Cannot parse inputs. Check your input.');
     end
     iVar = iVar + 1;
 end
@@ -422,7 +420,11 @@ else
     executable = '/usr/local/bin/matlab';
 end
 try
+       
     [status, cmdout] = system(sprintf('%s -automation -nodisplay -r "try, batch_job(''%s'', %d); catch, end; quit();" &', executable, params_file, worker));
+
+    % debug line
+%     [status, cmdout] = system(sprintf('%s -desktop -r "fprintf(''Worker %d\\n''), try, batch_job(''%s'', %d); catch, end;" &', executable, worker, params_file, worker));
     assert(status == 0, cmdout);
     success = true;
 catch me

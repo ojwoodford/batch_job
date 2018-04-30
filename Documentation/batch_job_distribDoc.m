@@ -5,7 +5,7 @@
 %   output = batch_job_distrib(func, input)
 %   output = batch_job_distrib(func, input, global_data)
 %   output = batch_job_distrib(func, input, global_data, workers)
-%   output = batch_job_distrib(___, 'Name', Value)
+%   output = batch_job_distrib(___, optionOrFlag)
 %
 %% Input Arguments
 % * *func* - a function handle or function name string
@@ -34,21 +34,14 @@
 %
 %   Default: {'', feature('numCores')}
 %
-% *Name-Value Pairs*
+% *Options and flags*
 %
-% * *'-async', true or false* - flag indicating to operate in asynchronous.
+% * *'-async'* - flag indicating to operate in asynchronous.
 % mode, returning immediately, and completing the job in the background.
 %
-%  Default: false
+% * *'-progress'* - flag indicating to display a progress bar.
 %
-% * *'-progress', true or false* - flag indicating to display a progress bar.
-%
-%  Default: false
-%
-% * *'-keep', true or false* - flag indicating intermediate result files
-%                              should be kept.
-%
-%  Default: false
+% * *'-keep'* - flag indicating intermediate result files should be kept.
 %
 % * *'-timeout', timeInSecs* - option pair indicating a maximum time to allow
 %                            each iteration to run before killing it. 0

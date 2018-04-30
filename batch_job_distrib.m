@@ -3,7 +3,7 @@
 %   output = batch_job_distrib(func, input)
 %   output = batch_job_distrib(func, input, global_data)
 %   output = batch_job_distrib(func, input, global_data, workers)
-%   output = batch_job_distrib(___, 'Name', Value)
+%   output = batch_job_distrib(___, optionOrFlag)
 %
 %% Input Arguments
 % func - a function handle or function name string
@@ -22,22 +22,16 @@
 %
 %   Default: {'', feature('numCores')}
 %
-% Name-Value Pairs:
+% *Options and flags*
 %
-% '-async', true or false - flag indicating to operate in asynchronous.
-%                           mode, returning immediately, and completing the
-%                           job in the background.
+% '-async' - flag indicating to operate in asynchronous.
+%            mode, returning immediately, and completing the
+%           job in the background.
 %
-%  Default: false
+% '-progress' - flag indicating to display a progress bar.
 %
-% '-progress', true or false - flag indicating to display a progress bar.
-%
-%  Default: false
-%
-% '-keep', true or false - flag indicating intermediate result files
-%                          should be kept.
-%
-%  Default: false
+% '-keep' - flag indicating intermediate result files
+%           should be kept.
 %
 % '-timeout', timeInSecs - option pair indicating a maximum time to allow
 %                          each iteration to run before killing it. 0
@@ -153,23 +147,17 @@ while iVar <= length(varargin)
     if ischar(V)
         switch lower(V)
             case '-keep'
-                iVar = iVar + 1;
-                keep = varargin{iVar};
-                assert(islogical(keep),'-keep value must be logical true or false.');
+                keep = true;
             case '-async'
-                iVar = iVar + 1;
-                async = varargin{iVar};
-                assert(islogical(async),'-async value must be logical true or false.');
+                async = true;
             case '-progress'
-                iVar = iVar + 1;
-                progress = varargin{iVar};
-                assert(islogical(progress),'-async value must be logical true or false.');
+                progress = true;
             case '-timeout'
                 iVar = iVar + 1;
                 timeout = varargin{iVar};
                 assert(isscalar(timeout));
             otherwise
-                error('Incorrect Name-Value pair.');
+                error('Incorrect option or flag pair: %s', varargin{iVar});
         end
     elseif isstruct(V)
         global_data = V;
