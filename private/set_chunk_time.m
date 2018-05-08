@@ -27,7 +27,7 @@ if t < 0.5
 end
 
 % Compute the chunk size
-s.chunk_size = max(floor(s.chunk_time / t), 1);
+s.chunk_size = min(max(floor(s.chunk_time / t), s.chunk_minmax(1)), s.chunk_minmax(2));
 
 % Save the job file
 save(s.params_file, '-struct', 's', '-mat');

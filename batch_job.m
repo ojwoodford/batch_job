@@ -82,6 +82,12 @@
 %                            current MATLAB instance is not used to run any
 %                            iterations. Timed-out iterations are skipped.
 %                            Default: 0 (no timeout).
+%   '-max_chunk', max_chunk - option pair indicating the maximum number of
+%                             loop iterations to run per chunk of work
+%                             distributed to each worker. Default: 1e10.
+%   '-min_chunk', min_chunk - option pair indicating the minimum number of
+%                             loop iterations to run per chunk of work
+%                             distributed to each worker. Default: 1.
 %
 %OUT:
 %   output - Px..xN numeric output array.
@@ -89,8 +95,6 @@
 %   See also PARFOR
 
 function output = batch_job(varargin)
-
-isposint = @(A) isscalar(A) && isnumeric(A) && round(A) == A && A > 0;
 
 % Determine if we are a worker
 if nargin == 2 && ischar(varargin{1}) && isposint(varargin{2})
@@ -127,6 +131,8 @@ end
 
 % We are the server
 % Check for flags
+min_chunk_size = 1;
+max_chunk_size = 1e10;
 num_workers = feature('numCores');
 progress = false;
 timeout = 0;
@@ -148,6 +154,16 @@ while a <= nargin
                 a = a + 1;
                 timeout = varargin{a};
                 assert(isscalar(timeout));
+                M(a-1:a) = false;
+            case '-max_chunk'
+                a = a + 1;
+                max_chunk_size = varargin{a};
+                assert(isposint(max_chunk_size), 'max_chunk should be a positive integer');
+                M(a-1:a) = false;
+            case '-min_chunk'
+                a = a + 1;
+                min_chunk_size = varargin{a};
+                assert(isposint(min_chunk_size), 'min_chunk should be a positive integer');
                 M(a-1:a) = false;
         end
     end
@@ -189,7 +205,7 @@ end
 
 % Have at least 10 seconds computation time per chunk, to reduce race
 % conditions
-s.chunk_size = max(ceil(10 / t), 1);
+s.chunk_size = min(max(ceil(10 / t), min_chunk_size), max_chunk_size);
 fprintf('Chosen chunk size: %d.\n', s.chunk_size);
 num_workers = min(ceil(N / s.chunk_size), num_workers);
 

@@ -90,6 +90,12 @@
 %                            previously timed out; otherwise timed-out
 %                            iterations are skipped. Default: 0 (no
 %                            timeout).
+%   '-max_chunk', max_chunk - option pair indicating the maximum number of
+%                             loop iterations to run per chunk of work
+%                             distributed to each worker. Default: 1e10.
+%   '-min_chunk', min_chunk - option pair indicating the minimum number of
+%                             loop iterations to run per chunk of work
+%                             distributed to each worker. Default: 1.
 %
 %OUT:
 %   output - Px..xN numeric or cell output array, or if in asynchronous
@@ -102,6 +108,8 @@
 function output = batch_job_distrib(varargin)
 
 % Check for flags
+min_chunk_size = 1;
+max_chunk_size = 1e10;
 async = false;
 progress = false;
 keep = false;
@@ -126,6 +134,16 @@ while a <= nargin
                 timeout = varargin{a};
                 assert(isscalar(timeout));
                 M(a-1:a) = false;
+            case '-max_chunk'
+                a = a + 1;
+                max_chunk_size = varargin{a};
+                assert(isposint(max_chunk_size), 'max_chunk should be a positive integer');
+                M(a-1:a) = false;
+            case '-min_chunk'
+                a = a + 1;
+                min_chunk_size = varargin{a};
+                assert(isposint(min_chunk_size), 'min_chunk should be a positive integer');
+                M(a-1:a) = false;
         end
     end
     a = a + 1;
@@ -134,6 +152,7 @@ varargin = varargin(M);
 progress = progress & usejava('awt');
 
 % Get the arguments
+sargs{5} = [min_chunk_size max_chunk_size];
 sargs{4} = timeout;
 sargs{3} = varargin{2};
 sargs{2} = varargin{1};
@@ -148,7 +167,6 @@ else
 end
 
 % Check the worker array makes sense
-isposint = @(A) isscalar(A) && isnumeric(A) && round(A) == A && A > 0;
 for w = 1:size(workers, 1)
     assert(ischar(workers{w,1}) && isposint(workers{w,2}));
     if isequal(workers{w,1}, '')
@@ -156,7 +174,7 @@ for w = 1:size(workers, 1)
     end
 end
 if N > 3
-    sargs{5} = varargin{4};
+    sargs{6} = varargin{4};
 end
 
 % Submit the job to the workers
