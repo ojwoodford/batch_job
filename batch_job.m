@@ -244,7 +244,7 @@ mo = open_mmap(s.output_mmap);
 % Set the data
 mo.Data.index = uint32(2);
 mo.Data.timeout(:) = Inf;
-mo.Data.finished(:) = 0;
+mo.Data.finished(:) = 1;
 mo.Data.output(:,1) = output(:);
 mo.Data.output(:,2:end) = NaN;
 
@@ -271,6 +271,8 @@ output = reshape(mo.Data.output, outsize);
 end
 
 function worker_loop(func, mi, mo, s, worker)
+% Flag as starting
+mo.Data.finished(worker) = 0;
 % Initialize values
 N = size(mi.Data.input, 2);
 n = uint32(s.chunk_size);
@@ -300,9 +302,12 @@ while 1
 end
 % Flag as finished
 mo.Data.finished(worker) = 1;
+clear mo;
 end
 
 function local_loop(func, mi, mo, s)
+% Flag as starting
+mo.Data.finished(1) = 0;
 % Initialize values
 N = size(mi.Data.input, 2);
 n = uint32(s.chunk_size);
