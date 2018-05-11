@@ -90,12 +90,10 @@
 %                            previously timed out; otherwise timed-out
 %                            iterations are skipped. Default: 0 (no
 %                            timeout).
-%   '-max_chunk', max_chunk - option pair indicating the maximum number of
-%                             loop iterations to run per chunk of work
-%                             distributed to each worker. Default: 1e10.
-%   '-min_chunk', min_chunk - option pair indicating the minimum number of
-%                             loop iterations to run per chunk of work
-%                             distributed to each worker. Default: 1.
+%   '-chunk_lims', [min max] - option pair indicating the minimum and
+%                              maximum number of loop iterations to run per
+%                              chunk of work distributed to each worker.
+%                              Default: [1 1e10].
 %
 %OUT:
 %   output - Px..xN numeric or cell output array, or if in asynchronous
@@ -108,8 +106,7 @@
 function output = batch_job_distrib(varargin)
 
 % Check for flags
-min_chunk_size = 1;
-max_chunk_size = 1e10;
+chunk_lims = [1 1e10];
 async = false;
 progress = false;
 keep = false;
@@ -134,15 +131,10 @@ while a <= nargin
                 timeout = varargin{a};
                 assert(isscalar(timeout));
                 M(a-1:a) = false;
-            case '-max_chunk'
+            case '-chunk_lims'
                 a = a + 1;
-                max_chunk_size = varargin{a};
-                assert(isposint(max_chunk_size), 'max_chunk should be a positive integer');
-                M(a-1:a) = false;
-            case '-min_chunk'
-                a = a + 1;
-                min_chunk_size = varargin{a};
-                assert(isposint(min_chunk_size), 'min_chunk should be a positive integer');
+                chunk_lims = varargin{a};
+                assert(numel(chunk_lims) == 2 && isposint(chunk_lims(1)) && isposint(chunk_lims(2)) && chunk_lims(2) >= chunk_lims(1), 'chunk_lims should be a 1x2 vector of positive integers');
                 M(a-1:a) = false;
         end
     end
@@ -152,7 +144,7 @@ varargin = varargin(M);
 progress = progress & usejava('awt');
 
 % Get the arguments
-sargs{5} = [min_chunk_size max_chunk_size];
+sargs{5} = chunk_lims;
 sargs{4} = timeout;
 sargs{3} = varargin{2};
 sargs{2} = varargin{1};
