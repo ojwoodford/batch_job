@@ -6,7 +6,7 @@
    <!--
 This HTML was auto-generated from MATLAB code.
 To make changes, update the MATLAB code and republish this document.
-      --><title>batch_job</title><meta name="generator" content="MATLAB 9.4"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2018-04-29"><meta name="DC.source" content="batch_jobDoc.m"><style type="text/css">
+      --><title>batch_job</title><meta name="generator" content="MATLAB 9.4"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2018-05-18"><meta name="DC.source" content="batch_jobDoc.m"><style type="text/css">
 html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
 
 html { min-height:100%; margin-bottom:1px; }
@@ -68,10 +68,13 @@ table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px soli
 
   </style></head><body><div class="content"><h1>batch_job</h1><!--introduction--><p>Runs a batch job across several instances of MATLAB on the same PC.</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Syntax</a></li><li><a href="#2">Input Arguments</a></li><li><a href="#3">Output Arguments</a></li><li><a href="#4">Description</a></li><li><a href="#8">Examples</a></li><li><a href="#11">See Also</a></li></ul></div><h2 id="1">Syntax</h2><pre class="language-matlab">output = batch_job(func, input)
 output = batch_job(func, input, global_data)
-output = batch_job(___, <span class="string">'Name'</span>, Value)
-</pre><h2 id="2">Input Arguments</h2><div><ul><li><b>func</b> - a function handle or function name string.</li><li><b>input</b> - Mx..xN numeric input data array, to be iterated over the           trailing dimension.</li><li><b>global_data</b> - a data structure, function handle, or function name                 string of a function which returns a data structure, to                 be passed to <tt>func</tt>.</li></ul></div><pre>Default: No global_data</pre><p><b>Name-Value Pair</b></p><div><ul><li><b>'-progress'</b> - flag indicating whether to display a progress bar.</li><li><b>'-workers', num_workers</b> - option pair indicating the number of worker                            processes to distribute work over.</li></ul></div><pre class="language-matlab">Default: feature(<span class="string">'numCores'</span>)
+output = batch_job(___, optionOrFlag)
+</pre><h2 id="2">Input Arguments</h2><div><ul><li><b>func</b> - a function handle or function name string.</li><li><b>input</b> - Mx..xN numeric input data array, to be iterated over the           trailing dimension.</li><li><b>global_data</b> - a data structure, function handle, or function name                 string of a function which returns a data structure, to                 be passed to <tt>func</tt>.</li></ul></div><pre>Default: No global_data</pre><p><b>Options and flags</b></p><div><ul><li><b>'-progress'</b> - flag indicating whether to display a progress bar.</li><li><b>'-workers', num_workers</b> - option pair indicating the number of worker                            processes to distribute work over.</li></ul></div><pre class="language-matlab">Default: feature(<span class="string">'numCores'</span>)
 </pre><div><ul><li><b>'-timeout', timeInSecs</b> - option pair indicating a maximum time to allow                            each iteration to run before killing it. 0                            means no timeout is used. If non-zero, the                            current MATLAB instance is not used to run any                            iterations. Timed-out iterations are skipped.</li></ul></div><pre class="language-matlab">Default: 0 (no timeout)
-</pre><h2 id="3">Output Arguments</h2><div><ul><li><b>output</b> - Px..xN numeric output array.</li></ul></div><h2 id="4">Description</h2><p>This is a replacement for parfor in this use case, if you don't have the Parallel Computing Toolbox.</p><p>If you have a for loop which can be written as:</p><pre class="language-matlab"><span class="keyword">for</span> a = 1:size(input, 2)
+</pre><pre>* *'-chunk_lims', [min max]* - option pair indicating the minimum and
+                             maximum number of loop iterations to run per
+                             chunk of work distributed to each worker.
+ Default: [1 1e10]</pre><h2 id="3">Output Arguments</h2><div><ul><li><b>output</b> - Px..xN numeric output array.</li></ul></div><h2 id="4">Description</h2><p>This is a replacement for parfor in this use case, if you don't have the Parallel Computing Toolbox.</p><p>If you have a for loop which can be written as:</p><pre class="language-matlab"><span class="keyword">for</span> a = 1:size(input, 2)
     output(:,a) = func(input(:,a), global_data);
 <span class="keyword">end</span>
 </pre><p>where both <tt>input</tt> and output are numeric types, then batch_job() can split the work across multiple MATLAB instances on the same PC, as follows:</p><p>The input arguments <tt>func</tt> and <tt>global_data</tt> may optionally be function names. When the latter is called, it outputs the true <tt>global_data</tt>. Note that <tt>global_data</tt> could be incorporated into <tt>func</tt> before calling batch_job, using an anonymous function. The functionality provided here simply allows more flexibility. For example, normally every worker loads a copy of <tt>global_data</tt> into its own memory space, but this can be avoided if <tt>global_data</tt> is a function which loads the data into shared memory via a memory mapped file. Indeed, this is the most efficient way of doing things - the data doesn't need to be saved to disk first (as it's already on the disk), and each worker doesn't store its own copy in memory. Passing <tt>global_data</tt> through a function call also allows the function to do further initializations, such as setting the path.</p><h2 id="8">Examples</h2><div><ul><li><b>Independent inputs:</b></li></ul></div><pre class="language-matlab"><span class="keyword">for</span> a = 1:size(input, 2)
@@ -98,7 +101,7 @@ output = batch_job(___, <span class="string">'Name'</span>, Value)
 %% Syntax
 %   output = batch_job(func, input)
 %   output = batch_job(func, input, global_data)
-%   output = batch_job(___, 'Name', Value)
+%   output = batch_job(___, optionOrFlag)
 %
 %% Input Arguments
 % * *func* - a function handle or function name string.
@@ -110,10 +113,9 @@ output = batch_job(___, <span class="string">'Name'</span>, Value)
 %
 %  Default: No global_data
 %
-% *Name-Value Pair*
+% *Options and flags*
 %
-% * *'-progress'* - flag indicating whether to display a
-% progress bar.
+% * *'-progress'* - flag indicating whether to display a progress bar.
 % * *'-workers', num_workers* - option pair indicating the number of worker
 %                            processes to distribute work over. 
 %
@@ -126,6 +128,11 @@ output = batch_job(___, <span class="string">'Name'</span>, Value)
 %                            iterations. Timed-out iterations are skipped.
 %
 %   Default: 0 (no timeout)
+%
+%  * *'-chunk_lims', [min max]* - option pair indicating the minimum and
+%                               maximum number of loop iterations to run per
+%                               chunk of work distributed to each worker.
+%   Default: [1 1e10]
 %
 %% Output Arguments
 % * *output* - Px..xN numeric output array.

@@ -4,7 +4,8 @@
 %% Syntax
 %   batch_job_submit(job_dir, func, input)
 %   batch_job_submit(job_dir, func, input, timeout)
-%   batch_job_submit(job_dir, func, input, timeout, global_data)
+%   batch_job_submit(job_dir, func, input, timeout, chunk_minmax)
+%   batch_job_submit(job_dir, func, input, timeout, chunk_minmax, global_data)
 %
 %% Input Arguments
 % * *job_dir* - path of the directory in which batch jobs are listed.

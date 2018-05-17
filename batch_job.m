@@ -6,10 +6,10 @@
 %   output = batch_job(___, optionOrFlag)
 %
 %% Input Arguments
-% * *func* - a function handle or function name string.
-% * *input* - Mx..xN numeric input data array, to be iterated over the
+% func - a function handle or function name string.
+% input - Mx..xN numeric input data array, to be iterated over the
 %           trailing dimension.
-% * *global_data* - a data structure, function handle, or function name
+% global_data - a data structure, function handle, or function name
 %                 string of a function which returns a data structure, to
 %                 be passed to |func|. 
 %
@@ -17,14 +17,14 @@
 %
 % *Options and flags*
 %
-% * *'-progress'* - flag indicating whether to display a progress bar. 
+% '-progress' - flag indicating whether to display a progress bar. 
 %                   
-% * *'-workers', num_workers* - option pair indicating the number of worker
+% '-workers', num_workers - option pair indicating the number of worker
 %                            processes to distribute work over. 
 %
 %   Default: feature('numCores')
 %
-% * *'-timeout', timeInSecs* - option pair indicating a maximum time to allow
+% '-timeout', timeInSecs - option pair indicating a maximum time to allow
 %                            each iteration to run before killing it. 0
 %                            means no timeout is used. If non-zero, the
 %                            current MATLAB instance is not used to run any
@@ -32,8 +32,13 @@
 %
 %   Default: 0 (no timeout)
 %
+% '-chunk_lims', [min max] - option pair indicating the minimum and
+%                               maximum number of loop iterations to run per
+%                               chunk of work distributed to each worker.
+%   Default: [1 1e10]
+%
 %% Output Arguments
-% * *output* - Px..xN numeric output array.
+% output - Px..xN numeric output array.
 %
 %% Description
 % This is a replacement for parfor in this use case, if you don't have the
@@ -103,8 +108,6 @@ function output = batch_job(func, input, varargin)
 
 
 %% Determine if we are a worker
-% function to check for a positive, scalar integer
-isposint = @(A) isscalar(A) && isnumeric(A) && round(A) == A && A > 0;
 if nargin == 2 && ischar(func) && isposint(input)
     % We are a worker
     worker = input;
@@ -143,6 +146,7 @@ num_workers = feature('numCores');
 progress = false;
 timeout = 0;
 global_data = [];
+chunk_lims = [1 1e10];
 iVar = 1;
 while iVar <= length(varargin)
     V = varargin{iVar};
@@ -158,6 +162,10 @@ while iVar <= length(varargin)
                 iVar = iVar + 1;
                 timeout = varargin{iVar};
                 assert(isscalar(timeout));
+            case '-chunk_lims'
+                iVar = iVar + 1;
+                chunk_lims = varargin{iVar};
+                assert(numel(chunk_lims) == 2 && isposint(chunk_lims(1)) && isposint(chunk_lims(2)) && chunk_lims(2) >= chunk_lims(1), 'chunk_lims should be a 1x2 vector of positive integers');
             otherwise
                  error('Incorrect option or flag pair: %s', varargin{iVar});
         end
@@ -210,7 +218,7 @@ end
 
 % Have at least 10 seconds computation time per chunk, to reduce race
 % conditions
-s.chunk_size = max(ceil(10 / t), 1);
+s.chunk_size = min(max(ceil(10 / t), chunk_lims(1)), chunk_lims(2));
 fprintf('Chosen chunk size: %d.\n', s.chunk_size);
 num_workers = min(ceil(N / s.chunk_size), num_workers);
 
@@ -249,7 +257,7 @@ mo = open_mmap(s.output_mmap);
 % Set the data
 mo.Data.index = uint32(2);
 mo.Data.timeout(:) = Inf;
-mo.Data.finished(:) = 0;
+mo.Data.finished(:) = true;
 mo.Data.output(:,1) = output(:);
 mo.Data.output(:,2:end) = NaN;
 
@@ -277,6 +285,8 @@ end
 
 %%
 function worker_loop(func, mi, mo, s, worker)
+% Flag as starting
+mo.Data.finished(worker) = false;
 % Initialize values
 N = size(mi.Data.input, 2);
 n = uint32(s.chunk_size);
@@ -306,10 +316,13 @@ while 1
 end
 % Flag as finished
 mo.Data.finished(worker) = 1;
+clear mo;
 end
 
 %%
 function local_loop(func, mi, mo, s)
+% Flag as starting
+mo.Data.finished(1) = false;
 % Initialize values
 N = size(mi.Data.input, 2);
 n = uint32(s.chunk_size);
@@ -323,7 +336,7 @@ else
     progress = @(v) v;
 end
 % Continue until there is no more data to get
-while 1
+while true
     % Get and increment the current index - assume this is atomic!
     ind = mo.Data.index;
     mo.Data.index = ind + n;

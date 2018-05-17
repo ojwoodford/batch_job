@@ -3,23 +3,26 @@
 %% Syntax
 %   batch_job_submit(job_dir, func, input)
 %   batch_job_submit(job_dir, func, input, timeout)
-%   batch_job_submit(job_dir, func, input, timeout, global_data)
+%   batch_job_submit(job_dir, func, input, timeout, chunk_minmax)
+%   batch_job_submit(job_dir, func, input, timeout, chunk_minmax, global_data)
 %
 %% Input Arguments
-% job_dir - path of the directory in which batch jobs are listed.
-% func - a function handle or function name string.
-% input - size(input) = [..., N]. numeric input data array, to be
+% * *job_dir* - path of the directory in which batch jobs are listed.
+%
+% * *func* - a function handle or function name string.
+%
+% * *input* - size(input) = [..., N]. numeric input data array, to be
 %           iterated over the trailing dimension. input must be numeric!
 %           The last dimenstion corresponds to each iteration a,
 %           input(:, a). The number of iterations corresponds to size of
 %           the last dimension of input, N.
-%           
+%
 % Hint: often it is best to think of input as an iterator representing the
 % linearIndex (see sub2ind) you want to loop over; then input is just a
 % vector of indices and global_data.someVariable(a) corresponds to a
 % value used in func at iteration a.
 %
-% timeout - a scalar indicating the maximum time (in seconds) to allow
+% * *timeout* - a scalar indicating the maximum time (in seconds) to allow
 %             one iteration to run for, before killing the calling MATLAB
 %             process. If negative, the absolute value is used, but
 %             iterations are rerun if they previously timed out; otherwise
@@ -27,14 +30,21 @@
 %
 %             Default: 0 (no timeout).
 %
-% global_data - a data structure, or function handle or function name
+%
+% * *chunk_minmax* - 1x2 vector of minimum and maximum possible chunk size
+%                  of for loop iterations that is distributed to each
+%                  worker. 
+%
+%              Default: [1 1e10]
+%
+% * *global_data* - a data structure, or function handle or function name
 %                 string of a function which returns a data structure, to
 %                 be passed to func. 
 %
 %             Default: No global data.
 %
 %% Output Arguments
-% h - structure to pass to batch_job_collect() in order to get the
+% * *h* - structure to pass to batch_job_collect() in order to get the
 %       results of the parallelization (if there are any).
 %
 %% Description
@@ -88,17 +98,21 @@
 % TODO
 %
 
-function s = batch_job_submit(job_dir, func, input, timeout, global_data)
+function s = batch_job_submit(job_dir, func, input, timeout, chunk_minmax, global_data)
 
 %% Input Parsing and Checking
 % Get the arguments
 s.func = func;
-if nargin < 4
-    timeout = 0;
-elseif nargin > 4
+if nargin < 5
+    chunk_minmax = [1 1e10];
+    if nargin < 4
+        timeout = 0;
+    end
+elseif nargin > 5
     s.global_data = global_data;
 end
 s.timeout = timeout;
+s.chunk_minmax = chunk_minmax;
 
 % helper function
 getname = @(x) inputname(1);
@@ -117,7 +131,7 @@ input = reshape(input, prod(s.insize), s.N);
 % TODO
 % Is this necessary?
 s.chunk_time = 10;
-s.chunk_size = 1;
+s.chunk_size = chunk_minmax(1);
 
 % Initialize the working directory path
 s.cwd = strrep(cd(), '\', '/');
@@ -144,8 +158,9 @@ write_bin(input, s.input_mmap.name);
 % Save the command script
 write_launch_script(sprintf('batch_job_worker(''%s'')', s.params_file), s.cmd_file);
 
-% If using a timeout, always have a chunk size of one
-if s.timeout ~= 0
+% If chunk size is fixed (timeout requires a chunk size of 1), we're done
+if s.timeout ~= 0 || chunk_minmax(1) >= chunk_minmax(2)
+    assert(s.timeout == 0 || s.chunk_size == 1, 'Timeout requires a minimum chunk size of 1');
     % Save the params
     save([s.params_file], '-struct', 's', '-mat');
     return;
@@ -175,8 +190,8 @@ catch me
     fprintf('%s\n', getReport(me, 'basic'));
 end
 
-% Worker failed or job too long. Assume chunk size of 1 and rename params file
-fprintf('Failed to estimate chunk size. Setting to 1.\n');
+% Worker failed or job too long. Assume the minimum chunk size and rename params file
+fprintf('Failed to estimate chunk size. Setting to %d.\n', s.chunk_size);
 try
     movefile([s.params_file '_'], s.params_file);
 catch

@@ -6,7 +6,7 @@
    <!--
 This HTML was auto-generated from MATLAB code.
 To make changes, update the MATLAB code and republish this document.
-      --><title>batch_job_distrib</title><meta name="generator" content="MATLAB 9.4"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2018-04-23"><meta name="DC.source" content="batch_job_distribDoc.m"><style type="text/css">
+      --><title>batch_job_distrib</title><meta name="generator" content="MATLAB 9.4"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2018-05-18"><meta name="DC.source" content="batch_job_distribDoc.m"><style type="text/css">
 html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
 
 html { min-height:100%; margin-bottom:1px; }
@@ -69,9 +69,12 @@ table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px soli
   </style></head><body><div class="content"><h1>batch_job_distrib</h1><!--introduction--><p>Distribute a MATLAB for loop across several PCs</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Syntax</a></li><li><a href="#2">Input Arguments</a></li><li><a href="#3">Output Arguments</a></li><li><a href="#4">Description</a></li><li><a href="#5">Example</a></li><li><a href="#6">See Also</a></li></ul></div><h2 id="1">Syntax</h2><pre class="language-matlab">output = batch_job_distrib(func, input)
 output = batch_job_distrib(func, input, global_data)
 output = batch_job_distrib(func, input, global_data, workers)
-output = batch_job_distrib(___, <span class="string">'Name'</span>, Value)
+output = batch_job_distrib(___, optionOrFlag)
 </pre><h2 id="2">Input Arguments</h2><div><ul><li><b>func</b> - a function handle or function name string</li><li><b>input</b> - size(input) = [..., N]. numeric input data array, to be           iterated over the trailing dimension. <tt>input</tt> must be numeric!           The last dimenstion corresponds to each iteration <tt>a</tt>,           <tt>input(:, a)</tt>. The number of iterations corresponds to size of           the last dimension of <tt>input</tt>, N.</li></ul></div><p>Hint: often it is best to think of <tt>input</tt> as an iterator representing the linearIndex (see <a href="matlab:doc('sub2ind')">sub2ind</a>) you want to loop over; then <tt>input</tt> is just a vector of indices and <tt>global_data.someVariable(a)</tt> corresponds to a value used in <tt>func</tt> at iteration <tt>a</tt>.</p><div><ul><li><b>global_data</b> - a data structure, function handle, or function name                 string of a function which returns a data structure, to                 be passed to <tt>func</tt>.</li></ul></div><pre>Default: No global_data</pre><div><ul><li><b>workers</b> - Wx2 cell array, with each row being {hostname, num_workers},             hostname being a text string indicating the name of a worker             PC (<tt>''</tt> for the local PC), and num_workers being the number of             MATLAB worker instances to start on that PC.</li></ul></div><pre class="language-matlab">Default: {<span class="string">''</span>, feature(<span class="string">'numCores'</span>)}
-</pre><p><b>Name-Value Pairs</b></p><div><ul><li><b>'-async', true or false</b> - flag indicating to operate in asynchronous. mode, returning immediately, and completing the job in the background.</li></ul></div><pre>Default: false</pre><div><ul><li><b>'-progress', true or false</b> - flag indicating to display a progress bar.</li></ul></div><pre>Default: false</pre><div><ul><li><b>'-keep', true or false</b> - flag indicating intermediate result files                              should be kept.</li></ul></div><pre>Default: false</pre><div><ul><li><b>'-timeout', timeInSecs</b> - option pair indicating a maximum time to allow                            each iteration to run before killing it. 0                            means no timeout is used. If non-zero, the                            current MATLAB instance is not used to run any                            iterations. If negative, the absolute value is                            used, but iterations are rerun if they                            previously timed out; otherwise timed-out                            iterations are skipped.</li></ul></div><pre>Default: 0 (no timeout)</pre><h2 id="3">Output Arguments</h2><div><ul><li><b>output</b> - Px..xN. numeric array, cell output array, or if in asynchronous            mode, a handle to a function which will return the output            array when called (blocking while the batch job finishes, if            necessary). Each column corresponds to an iteration <tt>a</tt>,            <tt>output(:,a)</tt>.</li></ul></div><h2 id="4">Description</h2><p>This is a replacement for parfor if you don't have the Parallel Computing Toolbox and/or Distributed Computing Server.</p><p>If you have a for loop which can be written as:</p><pre class="language-matlab"><span class="keyword">for</span> a = 1:size(input, 2)
+</pre><p><b>Options and flags</b></p><div><ul><li><b>'-async'</b> - flag indicating to operate in asynchronous. mode, returning immediately, and completing the job in the background.</li></ul></div><div><ul><li><b>'-progress'</b> - flag indicating to display a progress bar.</li></ul></div><div><ul><li><b>'-keep'</b> - flag indicating intermediate result files should be kept.</li></ul></div><div><ul><li><b>'-timeout', timeInSecs</b> - option pair indicating a maximum time to allow                            each iteration to run before killing it. 0                            means no timeout is used. If non-zero, the                            current MATLAB instance is not used to run any                            iterations. If negative, the absolute value is                            used, but iterations are rerun if they                            previously timed out; otherwise timed-out                            iterations are skipped.</li></ul></div><pre>Default: 0 (no timeout)</pre><pre>* *'-chunk_lims', [min max]* - option pair indicating the minimum and
+                             maximum number of loop iterations to run per
+                             chunk of work distributed to each worker.
+ Default: [1 1e10]</pre><h2 id="3">Output Arguments</h2><div><ul><li><b>output</b> - Px..xN. numeric array, cell output array, or if in asynchronous            mode, a handle to a function which will return the output            array when called (blocking while the batch job finishes, if            necessary). Each column corresponds to an iteration <tt>a</tt>,            <tt>output(:,a)</tt>.</li></ul></div><h2 id="4">Description</h2><p>This is a replacement for parfor if you don't have the Parallel Computing Toolbox and/or Distributed Computing Server.</p><p>If you have a for loop which can be written as:</p><pre class="language-matlab"><span class="keyword">for</span> a = 1:size(input, 2)
     output(:,a) = func(input(:,a), global_data);
 <span class="keyword">end</span>
 </pre><p>where <tt>input</tt> is a numeric array, then batch_job_distrib() can parallelize the work across multiple workers. <tt>input</tt> must be numeric but <tt>output</tt> does not have be the same class as <tt>input</tt>. <tt>output</tt> is a cell array the same size as <tt>input</tt>. The work is spread across MATLAB instances on multiple (unlimited) networked worker PCs with the following command:</p><pre class="language-matlab">output = batch_job_distrib(func, input, workers, global_data);
@@ -87,7 +90,7 @@ output = output();                         <span class="comment">% Get the resul
 %   output = batch_job_distrib(func, input)
 %   output = batch_job_distrib(func, input, global_data)
 %   output = batch_job_distrib(func, input, global_data, workers)
-%   output = batch_job_distrib(___, 'Name', Value)
+%   output = batch_job_distrib(___, optionOrFlag)
 %
 %% Input Arguments
 % * *func* - a function handle or function name string
@@ -116,21 +119,14 @@ output = output();                         <span class="comment">% Get the resul
 %
 %   Default: {'', feature('numCores')}
 %
-% *Name-Value Pairs*
+% *Options and flags*
 %
-% * *'-async', true or false* - flag indicating to operate in asynchronous.
+% * *'-async'* - flag indicating to operate in asynchronous.
 % mode, returning immediately, and completing the job in the background.
 %
-%  Default: false
+% * *'-progress'* - flag indicating to display a progress bar.
 %
-% * *'-progress', true or false* - flag indicating to display a progress bar.
-%
-%  Default: false
-%
-% * *'-keep', true or false* - flag indicating intermediate result files
-%                              should be kept.
-%
-%  Default: false
+% * *'-keep'* - flag indicating intermediate result files should be kept.
 %
 % * *'-timeout', timeInSecs* - option pair indicating a maximum time to allow
 %                            each iteration to run before killing it. 0
@@ -142,6 +138,11 @@ output = output();                         <span class="comment">% Get the resul
 %                            iterations are skipped. 
 %
 %  Default: 0 (no timeout)
+%
+%  * *'-chunk_lims', [min max]* - option pair indicating the minimum and
+%                               maximum number of loop iterations to run per
+%                               chunk of work distributed to each worker.
+%   Default: [1 1e10]
 %
 %% Output Arguments
 % * *output* - Px..xN. numeric array, cell output array, or if in asynchronous

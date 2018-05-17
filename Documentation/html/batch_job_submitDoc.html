@@ -6,7 +6,7 @@
    <!--
 This HTML was auto-generated from MATLAB code.
 To make changes, update the MATLAB code and republish this document.
-      --><title>batch_job_submit</title><meta name="generator" content="MATLAB 9.4"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2018-04-22"><meta name="DC.source" content="batch_job_submitDoc.m"><style type="text/css">
+      --><title>batch_job_submit</title><meta name="generator" content="MATLAB 9.4"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2018-05-18"><meta name="DC.source" content="batch_job_submitDoc.m"><style type="text/css">
 html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
 
 html { min-height:100%; margin-bottom:1px; }
@@ -68,8 +68,9 @@ table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px soli
 
   </style></head><body><div class="content"><h1>batch_job_submit</h1><!--introduction--><p>Submit a batch job to workers</p><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Syntax</a></li><li><a href="#2">Input Arguments</a></li><li><a href="#3">Output Arguments</a></li><li><a href="#4">Description</a></li><li><a href="#5">Example</a></li><li><a href="#6">See Also</a></li></ul></div><h2 id="1">Syntax</h2><pre class="language-matlab">batch_job_submit(job_dir, func, input)
 batch_job_submit(job_dir, func, input, timeout)
-batch_job_submit(job_dir, func, input, timeout, global_data)
-</pre><h2 id="2">Input Arguments</h2><div><ul><li><b>job_dir</b> - path of the directory in which batch jobs are listed.</li><li><b>func</b> - a function handle or function name string.</li><li><b>input</b> - Mx..xN numeric input data array, to be iterated over the           trailing dimension.</li><li><b>timeout</b> - a scalar indicating the maximum time (in seconds) to allow             one iteration to run for, before killing the calling MATLAB             process. If negative, the absolute value is used, but             iterations are rerun if they previously timed out; otherwise             timed-out iterations are skipped.</li></ul></div><pre>           Default: 0 (no timeout).</pre><div><ul><li><b>global_data</b> - a data structure, or function handle or function name                 string of a function which returns a data structure, to                 be passed to func.</li></ul></div><pre>           Default: No global data.</pre><h2 id="3">Output Arguments</h2><div><ul><li><b>h</b> - structure to pass to batch_job_collect() in order to get the       results of the parallelization (if there are any).</li></ul></div><h2 id="4">Description</h2><p>If you have a for loop which can be written as:</p><pre class="language-matlab"><span class="keyword">for</span> a = 1:size(input, 2)
+batch_job_submit(job_dir, func, input, timeout, chunk_minmax)
+batch_job_submit(job_dir, func, input, timeout, chunk_minmax, global_data)
+</pre><h2 id="2">Input Arguments</h2><div><ul><li><b>job_dir</b> - path of the directory in which batch jobs are listed.</li><li><b>func</b> - a function handle or function name string.</li><li><b>input</b> - size(input) = [..., N]. numeric input data array, to be           iterated over the trailing dimension. <tt>input</tt> must be numeric!           The last dimenstion corresponds to each iteration <tt>a</tt>,           <tt>input(:, a)</tt>. The number of iterations corresponds to size of           the last dimension of <tt>input</tt>, N.</li></ul></div><p>Hint: often it is best to think of <tt>input</tt> as an iterator representing the linearIndex (see <a href="matlab:doc('sub2ind')">sub2ind</a>) you want to loop over; then <tt>input</tt> is just a vector of indices and <tt>global_data.someVariable(a)</tt> corresponds to a value used in <tt>func</tt> at iteration <tt>a</tt>.</p><div><ul><li><b>timeout</b> - a scalar indicating the maximum time (in seconds) to allow             one iteration to run for, before killing the calling MATLAB             process. If negative, the absolute value is used, but             iterations are rerun if they previously timed out; otherwise             timed-out iterations are skipped.</li></ul></div><pre>           Default: 0 (no timeout).</pre><div><ul><li><b>global_data</b> - a data structure, or function handle or function name                 string of a function which returns a data structure, to                 be passed to func.</li></ul></div><pre>           Default: No global data.</pre><h2 id="3">Output Arguments</h2><div><ul><li><b>h</b> - structure to pass to batch_job_collect() in order to get the       results of the parallelization (if there are any).</li></ul></div><h2 id="4">Description</h2><p>If you have a for loop which can be written as:</p><pre class="language-matlab"><span class="keyword">for</span> a = 1:size(input, 2)
     output(:,a) = func(input(:,a), global_data);
 <span class="keyword">end</span>
 </pre><p>where input/output is a numeric or cell array, then batch_job_submit() can parallelize the work across multiple worker MATLAB instances on multiple (unlimited) networked worker PCs as follows:</p><pre class="language-matlab">h = batch_job_submit(job_dir, func, input, global_data);
@@ -83,13 +84,24 @@ output = batch_job_collect(h);
 %% Syntax
 %   batch_job_submit(job_dir, func, input)
 %   batch_job_submit(job_dir, func, input, timeout)
-%   batch_job_submit(job_dir, func, input, timeout, global_data)
+%   batch_job_submit(job_dir, func, input, timeout, chunk_minmax)
+%   batch_job_submit(job_dir, func, input, timeout, chunk_minmax, global_data)
 %
 %% Input Arguments
 % * *job_dir* - path of the directory in which batch jobs are listed.
 % * *func* - a function handle or function name string.
-% * *input* - Mx..xN numeric input data array, to be iterated over the
-%           trailing dimension.
+% * *input* - size(input) = [..., N]. numeric input data array, to be
+%           iterated over the trailing dimension. |input| must be numeric!
+%           The last dimenstion corresponds to each iteration |a|,
+%           |input(:, a)|. The number of iterations corresponds to size of
+%           the last dimension of |input|, N.
+%           
+% Hint: often it is best to think of |input| as an iterator representing
+% the linearIndex (see <matlab:doc('sub2ind') sub2ind>) you want to loop
+% over; then |input| is just a vector of indices and
+% |global_data.someVariable(a)| corresponds to a value used in |func| at
+% iteration |a|.
+%
 % * *timeout* - a scalar indicating the maximum time (in seconds) to allow
 %             one iteration to run for, before killing the calling MATLAB
 %             process. If negative, the absolute value is used, but

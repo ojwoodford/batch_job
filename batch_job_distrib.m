@@ -44,6 +44,11 @@
 %
 %  Default: 0 (no timeout)
 %
+%  '-chunk_lims', [min max] - option pair indicating the minimum and
+%                               maximum number of loop iterations to run per
+%                               chunk of work distributed to each worker.
+%   Default: [1 1e10]
+%
 %% Output Arguments
 % output - Px..xN numeric array, cell output array, or if in asynchronous
 %          mode, a handle to a function which will return the output
@@ -141,6 +146,7 @@ keep = false;
 timeout = 0;
 global_data = [];
 workers = {'', feature('numCores')};
+chunk_lims = [1 1e10];
 iVar = 1;
 while iVar <= length(varargin)
     V = varargin{iVar};
@@ -156,6 +162,10 @@ while iVar <= length(varargin)
                 iVar = iVar + 1;
                 timeout = varargin{iVar};
                 assert(isscalar(timeout));
+            case '-chunk_lims'
+                iVar = iVar + 1;
+                chunk_lims = varargin{iVar};
+                assert(numel(chunk_lims) == 2 && isposint(chunk_lims(1)) && isposint(chunk_lims(2)) && chunk_lims(2) >= chunk_lims(1), 'chunk_lims should be a 1x2 vector of positive integers');
             otherwise
                 error('Incorrect option or flag pair: %s', varargin{iVar});
         end
@@ -171,7 +181,6 @@ while iVar <= length(varargin)
 end
 
 % Check the worker cell array makes sense
-isPositiveInteger = @(A) isscalar(A) && isnumeric(A) && round(A) == A && A > 0;
 for iWorker = 1:size(workers, 1)
     assert(ischar(workers{iWorker,1}), '%d worker name is not a character array.', iWorker);
     assert(isPositiveInteger(workers{iWorker,2}), 'The number of workers for %d worker name is not a positive integer.', iWorker);
@@ -185,9 +194,9 @@ end
 
 % Submit the job to the workers
 if isempty(global_data)
-    s = batch_job_submit(cd(), func, input, timeout);
+    s = batch_job_submit(cd(), func, input, timeout, chunk_lims);
 else
-    s = batch_job_submit(cd(), func, input, timeout, global_data);
+    s = batch_job_submit(cd(), func, input, timeout, chunk_lims, global_data);
 end
 
 % Check that we can make a waitbar
