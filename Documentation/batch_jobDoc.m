@@ -32,6 +32,10 @@
 %
 %   Default: 0 (no timeout)
 %
+%   '-chunk_lims', [min max] - option pair indicating the minimum and
+%                              maximum number of loop iterations to run per
+%                              chunk of work distributed to each worker.
+%   Default: [1 1e10].
 %% Output Arguments
 % * *output* - Px..xN numeric output array.
 %
