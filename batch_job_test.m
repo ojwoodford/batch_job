@@ -1,4 +1,4 @@
-function out = batch_job_test
+function [out1, out2] = batch_job_test()
 % Test two methods work and give the same result as a normal for loop
 I = 1:500;
 
@@ -19,8 +19,8 @@ t1 = toc;
 fprintf('For loop: %gs. Batch_job_distrib: %gs. Batch_job: %gs. Equal: %d %d.\n', t1, t2, t3, isequal(out1, out2), isequal(out1, out3));
 
 % Test timeouts and error catching
-out = batch_job_distrib(@random_func, 1:50, '-progress', '-timeout', -1);
-out = batch_job(@random_func, 1:50, '-progress', '-timeout', 1);
+out1 = batch_job_distrib(@random_func, 1:20, '-progress', '-timeout', -4);
+out2 = batch_job(@random_func, 1:20, '-progress', '-timeout', 4);
 end
 
 function out = slow_func(in)
@@ -31,12 +31,13 @@ end
 
 function out = random_func(in, sz)
 assert(mod(in, 13) ~= 0, 'Unlucky for some');
-seed = now;
-seed = floor((seed - floor(seed)) * 2^32);
+seed = now() * 1000;
+seed = floor((seed - floor(seed)) * (2 ^ 32));
 rng(seed);
 if nargin < 2
     sz = 2; %ceil(rand(1) * 3);
 end
 out = rand(sz);
-pause(rand(1) * 1.1);
+t = rand(1) * 4.4;
+pause(t);
 end
