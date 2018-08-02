@@ -4,7 +4,7 @@ cmd = @(str) sprintf('matlab %s -r "try, %s; catch, end; quit force;"', str, fun
 % Open the file
 fh = fopen(fname, 'w');
 % Linux bash script
-fprintf(fh, ':; nohup /usr/local/bin/%s &\r\n:; exit 0;\r\n', cmd('-nodisplay -nosplash'));
+fprintf(fh, ':; nohup /usr/local/bin/%s &\r\n:; exit 0;\r\n', cmd('-nodesktop -nodisplay -nosplash'));
 % Windows batch file
 fprintf(fh, '@start %s\n', cmd('-automation'));
 fclose(fh);

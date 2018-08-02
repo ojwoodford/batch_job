@@ -404,7 +404,7 @@ else
     executable = '/usr/local/bin/matlab';
 end
 try
-    [status, cmdout] = system(sprintf('%s -automation -nodisplay -r "try, batch_job(''%s'', %d); catch, end; quit();" &', executable, params_file, worker));
+    [status, cmdout] = system(sprintf('%s -automation -nodisplay -nodesktop -nosplash -r "try, batch_job(''%s'', %d); catch, end; quit();" &', executable, params_file, worker));
     assert(status == 0, cmdout);
     success = true;
 catch me
