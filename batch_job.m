@@ -206,7 +206,7 @@ s.cwd = strrep(cd(), '\', '/');
 s.work_dir = [strrep(fullfile(s.cwd, ['batch_job_' tmpname()]), '\', '/'), '/'];
 mkdir(s.work_dir);
 % Make sure the directory gets deleted on exit
-co = onCleanup(@() rmdir(s.work_dir, 's')); % Comment out this line if you want to keep all files for debugging
+co = onCleanup_(@() rmdir(s.work_dir, 's'));
 
 % Create the files to be memory mapped
 % Create the filenames
@@ -232,6 +232,8 @@ save(s.params_file, '-struct', 's');
 % Open the memory mapped files
 mi = open_mmap(s.input_mmap);
 mo = open_mmap(s.output_mmap);
+% Make sure we end workers on early termination
+prepend(co, @() set_all_finished(mo));
 
 % Set the data
 mo.Data.index = uint32(2);
@@ -262,12 +264,16 @@ end
 output = reshape(mo.Data.output, outsize);
 end
 
+function set_all_finished(mo)
+mo.Data.finished(:) = 1;
+end
+
 function worker_loop(func, mi, mo, s, worker)
 % Initialize values
 N = size(mi.Data.input, 2);
 n = uint32(s.chunk_size);
 % Continue until there is no more data to get
-while 1
+while ~mo.Data.finished(worker) % Check for external termination
     % Get and increment the current index - assume this is atomic!
     ind = mo.Data.index;
     mo.Data.index = ind + n;
@@ -292,7 +298,6 @@ while 1
 end
 % Flag as finished
 mo.Data.finished(worker) = 1;
-clear mo;
 end
 
 function local_loop(func, mi, mo, s)
