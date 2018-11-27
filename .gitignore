@@ -1,0 +1,5 @@
+*.txt
+*.asv
+*~
+*.mex*
+.DS_Store
