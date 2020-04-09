@@ -1,6 +1,10 @@
 % Do the job - but catch any errors
 function me = do_job(job, kill)
 me = [];
+if ~exist(job, 'file')
+    % The job has been finished/killed already
+    return;
+end
 try
     % Do the job initializations
     [s, mi, func] = setup_job(job);
