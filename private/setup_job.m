@@ -10,3 +10,4 @@ func = construct_function(s);
 
 % Memory map the indices matrix
 mi = open_mmap(s.input_mmap);
+end

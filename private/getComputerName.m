@@ -12,7 +12,7 @@ function name = getComputerName()
 % MOD: MJMJ/2013
 
 [ret, name] = system('hostname');   
-if ret ~= 0,
+if ret ~= 0
    if ispc
       name = getenv('COMPUTERNAME');
    else      
@@ -20,3 +20,4 @@ if ret ~= 0,
    end
 end
 name = strtrim(lower(name));
+end

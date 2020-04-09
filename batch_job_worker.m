@@ -68,4 +68,5 @@ while 1
     % Go back to the job directory
     cd(job_dir);
 end
+end
 

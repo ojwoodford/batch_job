@@ -50,9 +50,11 @@ if kill
     stop(ht);
     delete(ht);
 end
+end
 
 function kill_signal_t(ht, varargin)
 % Check for the kill signal
 if kill_signal(get(ht, 'UserData'))
     quit force; % Stop immediately
+end
 end

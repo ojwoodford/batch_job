@@ -34,6 +34,8 @@ save(s.params_file, '-struct', 's', '-mat');
 
 % Delete the current one
 delete(job);
+end
 
 function kill
 quit force;
+end
