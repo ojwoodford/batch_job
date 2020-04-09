@@ -23,6 +23,11 @@
 % See also BATCH_JOB_SUBMIT, BATCH_JOB_COLLECT
 
 function me = batch_job_worker(job)
+if nargin == 0
+    % Testing this function is on the path
+    me = 'pass';
+    return;
+end
 
 % Parse the input
 [job_dir, job_file, ext] = fileparts(job);

@@ -1,4 +1,7 @@
 function [out1, out2] = batch_job_test()
+% Check batch_job_worker can be found by a worker
+check_on_path('');
+
 % Test two methods work and give the same result as a normal for loop
 I = 1:500;
 
