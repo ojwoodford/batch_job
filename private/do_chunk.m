@@ -24,7 +24,7 @@ for b = numel(ind):-1:1
     try
         output{b} = func(mi.Data.input(:,ind(b)));
     catch me
-        output{b} = getReport(me, 'basic');
+        output{b} = getReport(me, 'extended');
     end
 end
 % Stop the timeout timer
