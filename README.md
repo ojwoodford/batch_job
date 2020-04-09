@@ -37,3 +37,7 @@ The toolbox provides three approaches for parallelizing for loops:
  3. Single call function, `batch_job()`, which spawns MATLAB instances locally, and uses a memory mapped file to communicate between workers. This approach does not handle heterogeneous (non-uniform) outputs, nor does support asynchronous computation, but is able to kill more hung processes than `batch_job_distrib()` using the `-timeout` option.
 
 See the help text for each of those functions for usage.
+
+### Reporting bugs
+
+This toolbox has a lot of functionality, and it's difficult to make sure it all works in all scenarios. If you find it's not working for you, please run `batch_job_test()` to make sure that works as expected (i.e. doesn't report any errors). If it does, feel free to report an issue. If it fails, please make sure that the `batch_job` folder is on the path at startup for all workers.
