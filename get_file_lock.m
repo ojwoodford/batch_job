@@ -34,10 +34,8 @@ if isempty(lock_)
     jh.close();
 else
     % Succeeded - make sure the lock is deleted when finished with
-    lock = onCleanup(@() cleanup_lock(lock_, jh, fname));
-    if nargout > 1
-        cleanup_fun = @() cleanup_lock(lock_, jh, fname);
-    end
+    cleanup_fun = @() cleanup_lock(lock_, jh, fname);
+    lock = onCleanup(cleanup_fun);
 end
 end
 
