@@ -1,6 +1,6 @@
 % Time string function
 function str = timestr(t)
-s = rem(t, 60);
+s = min(rem(t, 60), 59);
 m = rem(floor(t/60), 60);
 h = floor(t/3600);
 
