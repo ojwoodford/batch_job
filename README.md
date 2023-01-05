@@ -1,7 +1,9 @@
 Batch Job
 =========
 
-A MATLAB toolbox to parallelize simple for loops across multiple MATLAB instances, across multiple computing nodes. For the toolbox to work, its root directory needs to be on your MATLAB path at startup.
+A MATLAB toolbox to parallelize simple for loops across multiple MATLAB instances, across multiple computing nodes. For the toolbox to work:
+ - The toolbox root directory needs to be on your MATLAB path at startup.
+ - MATLAB should be callable from the system command line, without the full path (e.g. by calling matlab or matlab.exe).
 
 ### Overview
 
